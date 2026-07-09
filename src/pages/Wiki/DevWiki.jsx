@@ -137,9 +137,181 @@ const DevWiki = () => {
     return tags;
   };
 
+  const getAbsoluteUrl = (url) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
+  const renderInlineFormatting = (text) => {
+    if (!text) return '';
+    // Split by bold (**), italics (*), and inline code (`)
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} className="font-bold text-zinc-150">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={idx} className="italic text-zinc-300">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={idx} className="bg-zinc-900 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{part.slice(1, -1)}</code>;
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
+  const parseMarkdownTable = (tableLines, tableKey) => {
+    if (tableLines.length < 2) return null;
+    
+    const rows = tableLines.map(line => {
+      return line.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+    });
+
+    const isSeparator = rows[1]?.every(cell => /^:-*-:?$|^-+$/.test(cell));
+    if (!isSeparator) return null;
+
+    const headers = rows[0];
+    const bodyRows = rows.slice(2);
+
+    return (
+      <div key={tableKey} className="overflow-x-auto my-4 rounded-xl border border-zinc-900 shadow-lg bg-zinc-950/40">
+        <table className="w-full border-collapse text-left text-xs font-sans">
+          <thead>
+            <tr className="bg-zinc-900/80 border-b border-zinc-800">
+              {headers.map((h, i) => (
+                <th key={i} className="p-4 font-bold text-zinc-150 uppercase tracking-wider text-[10px]">
+                  {renderInlineFormatting(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-900/60">
+            {bodyRows.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-zinc-900/20 transition-colors">
+                {row.map((cell, cIdx) => {
+                  const cellLines = cell.split(/<br\s*\/?>/i);
+                  return (
+                    <td key={cIdx} className="p-4 text-zinc-300 leading-relaxed align-top">
+                      {cellLines.map((line, lIdx) => (
+                        <div key={lIdx} className="my-1">
+                          {renderInlineFormatting(line)}
+                        </div>
+                      ))}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const formatWikiContent = (text) => {
+    if (!text) return null;
+    
+    const parts = text.split(/(```[\s\S]*?```)/g);
+    
+    return (
+      <div className="space-y-3.5 text-zinc-300 text-sm leading-relaxed font-sans">
+        {parts.map((part, idx) => {
+          if (part.startsWith('```') && part.endsWith('```')) {
+            const match = part.match(/```(\w*)\n([\s\S]*?)```/);
+            const lang = match ? match[1] : 'code';
+            const code = match ? match[2] : part.slice(3, -3);
+            
+            return (
+              <div key={idx} className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 font-mono text-xs my-3 shadow-sm">
+                <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                  <span>{lang || 'code'}</span>
+                </div>
+                <pre className="p-4 overflow-x-auto text-zinc-300 select-all leading-relaxed whitespace-pre">{code}</pre>
+              </div>
+            );
+          } else {
+            const lines = part.split('\n');
+            const elements = [];
+            let currentTableLines = [];
+
+            const flushTable = () => {
+              if (currentTableLines.length > 0) {
+                const tableKey = `table-${idx}-${elements.length}`;
+                const tableElement = parseMarkdownTable(currentTableLines, tableKey);
+                if (tableElement) {
+                  elements.push(tableElement);
+                } else {
+                  currentTableLines.forEach((tLine) => {
+                    elements.push(
+                      <p key={`fb-${idx}-${elements.length}`} className="my-1.5">
+                        {renderInlineFormatting(tLine)}
+                      </p>
+                    );
+                  });
+                }
+                currentTableLines = [];
+              }
+            };
+
+            lines.forEach((line) => {
+              const trimmed = line.trim();
+              if (trimmed.startsWith('|')) {
+                currentTableLines.push(line);
+              } else {
+                flushTable();
+
+                if (!trimmed) return;
+                
+                if (trimmed.startsWith('---') || trimmed.replace(/^[*-]\s*/, '').startsWith('---')) {
+                  elements.push(<hr key={`hr-${idx}-${elements.length}`} className="border-zinc-900 my-4" />);
+                } else if (trimmed.startsWith('###')) {
+                  elements.push(
+                    <h4 key={`h4-${idx}-${elements.length}`} className="text-zinc-150 font-bold text-xs mt-4 uppercase tracking-wider text-primary">
+                      {trimmed.replace(/^###\s*/, '')}
+                    </h4>
+                  );
+                } else if (trimmed.startsWith('##')) {
+                  elements.push(
+                    <h3 key={`h3-${idx}-${elements.length}`} className="text-zinc-100 font-bold text-sm mt-5 uppercase border-b border-zinc-900/60 pb-1.5 text-zinc-200">
+                      {trimmed.replace(/^##\s*/, '')}
+                    </h3>
+                  );
+                } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+                  elements.push(
+                    <li key={`li-${idx}-${elements.length}`} className="ml-4 list-disc pl-1 marker:text-primary">
+                      {renderInlineFormatting(trimmed.replace(/^[*-]\s*/, ''))}
+                    </li>
+                  );
+                } else {
+                  elements.push(
+                    <p key={`p-${idx}-${elements.length}`} className="my-1.5">
+                      {renderInlineFormatting(line)}
+                    </p>
+                  );
+                }
+              }
+            });
+
+            flushTable();
+
+            return <div key={idx} className="space-y-2">{elements}</div>;
+          }
+        })}
+      </div>
+    );
+  };
+
   // Convert timeline markdown into visual progression cards
   const renderTimelineProgress = (md) => {
     if (!md) return <p className="text-xs text-muted-foreground">Generating timeline content...</p>;
+
+    if (md.includes('|')) {
+      return formatWikiContent(md);
+    }
     
     // Simple parser to extract Phase blocks
     const blocks = [];
@@ -149,7 +321,6 @@ const DevWiki = () => {
     lines.forEach(line => {
       const trimmed = line.trim();
       
-      // Match common Phase headings like "Phase 1: Announcement..." or "1. **Phase 1..." or "### 1..."
       const phaseMatch = trimmed.match(/(?:Phase\s+(\d+)|Phase\s+(\d+)\s*:|###\s+(?:Phase\s+\d+|\d+\.\s+Phase\s+\d+))/i) || 
                          trimmed.match(/\*\*(Phase\s+\d+|Phase\s+\d+\s*:|Phase\s+\d+)\*\*/i);
       
@@ -316,20 +487,20 @@ const DevWiki = () => {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5" /> Glossary Definition
                     </span>
-                    <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-900/40 p-4 rounded-lg border border-zinc-900 shadow-sm">
-                      {selectedTerm.definition}
-                    </p>
+                    <div className="bg-zinc-900/30 p-5 rounded-xl border border-zinc-900/80 shadow-md">
+                      {formatWikiContent(selectedTerm.definition)}
+                    </div>
                   </div>
-
+ 
                   {/* Why Trending */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-amber-400">
                       <TrendingUp className="h-4 w-4" />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Why It's Trending</span>
                     </div>
-                    <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-900/40 p-4 rounded-lg border border-zinc-900 shadow-sm">
-                      {selectedTerm.why_trending}
-                    </p>
+                    <div className="bg-zinc-900/30 p-5 rounded-xl border border-zinc-900/80 shadow-md">
+                      {formatWikiContent(selectedTerm.why_trending)}
+                    </div>
                   </div>
 
                   {/* Concept tags system */}
@@ -381,7 +552,7 @@ const DevWiki = () => {
                         <li key={i} className="flex items-center gap-2.5 text-xs bg-zinc-900/40 p-3 rounded-lg border border-zinc-900">
                           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                           <a
-                            href={url}
+                            href={getAbsoluteUrl(url)}
                             target="_blank"
                             rel="noreferrer"
                             className="text-zinc-300 hover:text-primary hover:underline break-all"

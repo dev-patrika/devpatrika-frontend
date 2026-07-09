@@ -36,6 +36,7 @@ const AIChat = () => {
     createNewSession, 
     deleteSession, 
     addMessage,
+    updateLastMessage,
     clearHistory,
     renameSession
   } = useChatStore();
@@ -44,6 +45,7 @@ const AIChat = () => {
   const [hoveredCitation, setHoveredCitation] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Fetch available AI models from backend
@@ -70,63 +72,88 @@ const AIChat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeMessages.length]);
 
-  // Send message mutation (calls backend RAG chatbot)
-  const chatMutation = useMutation({
-    mutationFn: chatService.sendChatMessage,
-    onSuccess: (data) => {
+  // Send message using streaming
+  const handleSendMessageStream = async (userText) => {
+    setIsStreaming(true);
+
+    try {
+      // Push User message locally
+      addMessage(activeSessionId, {
+        role: 'user',
+        content: userText
+      });
+
+      // Push an empty assistant message to update
       addMessage(activeSessionId, {
         role: 'assistant',
-        content: data.response,
-        citations: data.citations || []
+        content: '',
+        citations: []
       });
-    },
-    onError: (err) => {
-      const msg = err.response?.data?.detail || 'Failed to get AI response. Verify API keys in backend env.';
-      toast.error(msg);
-      addMessage(activeSessionId, {
-        role: 'assistant',
-        content: `*Error:* Failed to complete request: ${msg}`
+
+      const response = await chatService.streamChatMessage({
+        model: selectedModel,
+        session_id: activeSessionId,
+        message: userText
       });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      let done = false;
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.replace('data: ', '');
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.type === 'text') {
+                  updateLastMessage(activeSessionId, data.content);
+                } else if (data.type === 'citations') {
+                  updateLastMessage(activeSessionId, '', data.citations);
+                } else if (data.type === 'error') {
+                  toast.error(data.content);
+                  updateLastMessage(activeSessionId, '\\n\\n*Error:* ' + data.content);
+                }
+              } catch (e) {
+                // Ignore parse errors for incomplete chunks
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to connect to AI engine.');
+      updateLastMessage(activeSessionId, '\\n\\n*Error:* Connection failed.');
+    } finally {
+      setIsStreaming(false);
     }
-  });
+  };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!inputMessage.trim() || chatMutation.isPending) return;
+    if (!inputMessage.trim() || isStreaming) return;
 
     const userText = inputMessage.trim();
     setInputMessage('');
-
-    // Push User message locally
-    addMessage(activeSessionId, {
-      role: 'user',
-      content: userText
-    });
-
-    // Invoke API call
-    chatMutation.mutate({
-      model: selectedModel,
-      session_id: activeSessionId,
-      message: userText
-    });
+    handleSendMessageStream(userText);
   };
 
   // Trigger regeneration using the last human message
   const handleRegenerate = () => {
-    if (chatMutation.isPending || activeMessages.length === 0) return;
+    if (isStreaming || activeMessages.length === 0) return;
     
     // Find last user message in active thread
     const userMsgs = activeMessages.filter(m => m.role === 'user');
     if (userMsgs.length === 0) return;
     
     const lastUserText = userMsgs[userMsgs.length - 1].content;
-    
-    // Invoke API call
-    chatMutation.mutate({
-      model: selectedModel,
-      session_id: activeSessionId,
-      message: lastUserText
-    });
+    handleSendMessageStream(lastUserText);
   };
 
   // Clear current thread messages locally
@@ -450,7 +477,7 @@ const AIChat = () => {
                     <div className="flex pt-2">
                       <button
                         onClick={handleRegenerate}
-                        disabled={chatMutation.isPending}
+                        disabled={isStreaming}
                         className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-primary transition-colors"
                       >
                         <RotateCcw className="h-3 w-3" /> Regenerate Response
@@ -463,7 +490,7 @@ const AIChat = () => {
           )}
 
           {/* Thinking spinner loader */}
-          {chatMutation.isPending && (
+          {isStreaming && activeMessages.length > 0 && activeMessages[activeMessages.length - 1].content === "" && (
             <div className="flex gap-4 p-4 rounded-xl border border-zinc-900/60 bg-emerald-500/[0.01]">
               <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
                 <Sparkles className="h-4 w-4 animate-spin" />
@@ -507,13 +534,13 @@ const AIChat = () => {
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={chatMutation.isPending ? "AI is processing answer..." : "Ask the developer assistant..."}
-            disabled={chatMutation.isPending}
+            placeholder={isStreaming ? "AI is processing answer..." : "Ask the developer assistant..."}
+            disabled={isStreaming}
             className="bg-zinc-900 border-zinc-800 text-sm focus-visible:ring-primary flex-1"
           />
           <Button
             type="submit"
-            disabled={chatMutation.isPending || !inputMessage.trim()}
+            disabled={isStreaming || !inputMessage.trim()}
             variant="primary"
             size="icon"
             className="h-9 w-9"

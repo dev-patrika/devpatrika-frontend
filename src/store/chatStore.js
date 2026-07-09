@@ -96,6 +96,33 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
+  updateLastMessage: (sessionId, contentChunk, citations = null) => {
+    const history = get().chatHistories[sessionId] || [];
+    if (history.length === 0) return;
+
+    const lastMsgIndex = history.length - 1;
+    const lastMsg = history[lastMsgIndex];
+    
+    if (lastMsg.role !== 'assistant') return;
+
+    const updatedMsg = {
+      ...lastMsg,
+      content: lastMsg.content + contentChunk,
+      citations: citations ? citations : lastMsg.citations
+    };
+
+    const updatedHistory = [...history];
+    updatedHistory[lastMsgIndex] = updatedMsg;
+
+    const updatedHistories = {
+      ...get().chatHistories,
+      [sessionId]: updatedHistory
+    };
+
+    localStorage.setItem('chat_histories', JSON.stringify(updatedHistories));
+    set({ chatHistories: updatedHistories });
+  },
+
   renameSession: (sessionId, title) => {
     const updatedSessions = get().sessions.map(s => 
       s.id === sessionId ? { ...s, title } : s

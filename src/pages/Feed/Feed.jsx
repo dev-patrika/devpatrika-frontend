@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Search, 
@@ -23,6 +23,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
 const Feed = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [category, setCategory] = useState(searchParams.get('category') || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -34,10 +35,6 @@ const Feed = () => {
 
   // Filter mode: 'all' or 'bookmarks'
   const [filterMode, setFilterMode] = useState('all');
-
-  // Selected news item for details modal
-  const [selectedNews, setSelectedNews] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -66,25 +63,7 @@ const Feed = () => {
     })
   });
 
-  // Direct URL linking hook (e.g. ?news_id=123)
-  const urlNewsId = searchParams.get('news_id');
 
-  useEffect(() => {
-    if (urlNewsId && news.length > 0) {
-      const match = news.find(n => n.id.toString() === urlNewsId);
-      if (match) {
-        setSelectedNews(match);
-        setIsModalOpen(true);
-      }
-    }
-  }, [urlNewsId, news]);
-
-  // Fetch related articles
-  const { data: related = [], isLoading: relatedLoading } = useQuery({
-    queryKey: ['news', 'related', selectedNews?.id],
-    queryFn: () => newsService.getRelatedNews(selectedNews.id),
-    enabled: !!selectedNews?.id
-  });
 
   const categories = [
     { value: '', label: 'All Feeds' },
@@ -107,21 +86,7 @@ const Feed = () => {
   };
 
   const handleOpenDetails = (item) => {
-    setSelectedNews(item);
-    setIsModalOpen(true);
-    setSearchParams(prev => {
-      prev.set('news_id', item.id);
-      return prev;
-    });
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedNews(null);
-    setSearchParams(prev => {
-      prev.delete('news_id');
-      return prev;
-    });
+    navigate(`/news/${item.id}`);
   };
 
   // Toggle bookmark in localStorage
@@ -333,124 +298,6 @@ const Feed = () => {
           })}
         </div>
       )}
-
-      {/* Details modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={selectedNews?.title || 'Article Intel'}
-        size="lg"
-      >
-        {selectedNews && (
-          <div className="space-y-6">
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs border-b border-zinc-900 pb-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 uppercase font-mono px-3">
-                  {selectedNews.category || 'AI'}
-                </Badge>
-                <span className="text-muted-foreground flex items-center gap-1.5 font-mono">
-                  <Globe className="h-3.5 w-3.5" /> {selectedNews.source}
-                </span>
-                <span className="text-muted-foreground flex items-center gap-1.5 font-mono">
-                  <Clock className="h-3.5 w-3.5" /> {new Date(selectedNews.published_at).toLocaleDateString()}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => handleShareStory(e, selectedNews)}
-                  className="h-8 border-zinc-800 text-xs px-2.5"
-                >
-                  <Share2 className="h-3.5 w-3.5 mr-1.5" /> Share
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => handleToggleBookmark(e, selectedNews)}
-                  className={`h-8 border-zinc-800 text-xs px-2.5 ${
-                    bookmarks.some(b => b.id === selectedNews.id) ? 'text-indigo-400 border-indigo-500/20' : ''
-                  }`}
-                >
-                  <Bookmark className={`h-3.5 w-3.5 mr-1.5 ${bookmarks.some(b => b.id === selectedNews.id) ? 'fill-indigo-400' : ''}`} /> 
-                  {bookmarks.some(b => b.id === selectedNews.id) ? 'Saved' : 'Save'}
-                </Button>
-              </div>
-            </div>
-
-            {/* AI Summary */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-primary">
-                <BookOpen className="h-4 w-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">AI Analysis Brief</span>
-              </div>
-              <div className="bg-zinc-900/30 p-5 rounded-lg border border-zinc-900/80">
-                {formatSummary(selectedNews.summary)}
-              </div>
-            </div>
-
-            {/* Raw Context extracts */}
-            {selectedNews.raw_content && (
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Context Extract</span>
-                <div className="max-h-40 overflow-y-auto bg-zinc-950 p-4 rounded border border-zinc-900 text-xs text-muted-foreground font-mono leading-relaxed">
-                  {selectedNews.raw_content}
-                </div>
-              </div>
-            )}
-
-            {/* Source Reference Links */}
-            <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
-              <a
-                href={selectedNews.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                Go to original publication <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-
-            {/* Related recommendations */}
-            <div className="space-y-3 pt-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 block">Related Technical Intel</span>
-              {relatedLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-              ) : related.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">No related entries cataloged.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {related.map((relItem) => (
-                    <div
-                      key={relItem.id}
-                      onClick={() => {
-                        setSelectedNews(relItem);
-                        setSearchParams(prev => {
-                          prev.set('news_id', relItem.id);
-                          return prev;
-                        });
-                      }}
-                      className="p-3 bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 rounded-lg cursor-pointer transition-colors flex flex-col justify-between h-24"
-                    >
-                      <span className="text-[10px] font-semibold text-zinc-300 line-clamp-2 leading-snug">
-                        {relItem.title}
-                      </span>
-                      <span className="text-[9px] text-muted-foreground font-mono flex items-center gap-1 mt-2">
-                        <Clock className="h-2.5 w-2.5" /> {getReadingTime(relItem.summary)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };

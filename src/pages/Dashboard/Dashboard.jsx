@@ -56,51 +56,6 @@ const Dashboard = () => {
     queryFn: reportService.getWeeklyReports
   });
 
-  // Manual crawl triggers
-  const crawlMutation = useMutation({
-    mutationFn: newsService.triggerIngest,
-    onSuccess: (data) => {
-      toast.success(data.detail || 'Feeds crawling started in background.');
-      queryClient.invalidateQueries({ queryKey: ['news'] });
-    }
-  });
-
-  // Manual weekly compiler
-  const compileMutation = useMutation({
-    mutationFn: reportService.compileWeeklyReport,
-    onSuccess: (data) => {
-      toast.success(`Weekly report compiled: ${data.title}`);
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
-    },
-    onError: (err) => {
-      const msg = err.response?.data?.detail || 'Compilation failed. Ensure SQLite has news articles.';
-      toast.error(msg);
-    }
-  });
-
-  // Ingestion and compilation relative timestamps (grounded in DB)
-  const getLastIngestionTime = () => {
-    if (news.length === 0) return 'Not Available';
-    try {
-      const dates = news.map(n => new Date(n.created_at));
-      const latest = new Date(Math.max(...dates));
-      return formatDistanceToNow(latest, { addSuffix: true });
-    } catch {
-      return 'Not Available';
-    }
-  };
-
-  const getLastCompilationTime = () => {
-    if (reports.length === 0) return 'Not Available';
-    try {
-      const dates = reports.map(r => new Date(r.created_at));
-      const latest = new Date(Math.max(...dates));
-      return formatDistanceToNow(latest, { addSuffix: true });
-    } catch {
-      return 'Not Available';
-    }
-  };
-
   // Category counts metrics
   const categoryCounts = news.reduce((acc, curr) => {
     const cat = curr.category || 'Uncategorized';
@@ -142,26 +97,6 @@ const Dashboard = () => {
             Real-time feed analytics, AI wiki curation, and community radar tracking.
           </p>
         </div>
-        <div className="flex gap-2.5">
-          <Button
-            variant="outline"
-            className="neon-border-hover text-xs border-zinc-800"
-            onClick={() => crawlMutation.mutate()}
-            isLoading={crawlMutation.isPending}
-          >
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Ingest Feeds
-          </Button>
-          <Button
-            variant="secondary"
-            className="neon-border-indigo-hover text-xs"
-            onClick={() => compileMutation.mutate()}
-            isLoading={compileMutation.isPending}
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Compile Report
-          </Button>
-        </div>
       </div>
 
       {/* KPI Stats Cards grid */}
@@ -193,78 +128,15 @@ const Dashboard = () => {
 
       {/* Main split dashboard layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2-Span): Visual Metrics & Recent feed */}
+        {/* Left Column (2-Span): Recent Tech News summaries */}
         <div className="lg:col-span-2 space-y-6">
-          
-          {/* Tech Category allocation chart */}
-          <Card className="glass-panel border-zinc-900">
-            <CardHeader className="p-6">
-              <CardTitle className="text-xs font-bold uppercase tracking-widest text-zinc-350 flex items-center gap-2">
-                <Layers className="h-4.5 w-4.5 text-primary" /> Category Distribution
-              </CardTitle>
-              <CardDescription>Percentage split of summarized tech feeds</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              {isDataLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              ) : totalNews === 0 ? (
-                <div className="text-center py-10 text-xs text-muted-foreground italic border border-zinc-900/60 rounded-lg">
-                  No data to analyze. Run feed ingest to populate database.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
-                  {/* Styled SVG Gauges */}
-                  <div className="space-y-4">
-                    {categories.slice(0, 3).map((cat) => {
-                      const count = categoryCounts[cat.name] || 0;
-                      const pct = totalNews > 0 ? Math.round((count / totalNews) * 100) : 0;
-                      return (
-                        <div key={cat.name} className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-zinc-300">{cat.name}</span>
-                            <span className="font-mono text-muted-foreground">{pct}%</span>
-                          </div>
-                          <div className="w-full bg-zinc-900 border border-zinc-800 rounded-full h-1.5 overflow-hidden">
-                            <div className={`h-full rounded-full ${cat.color.split(' ')[0]}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-4">
-                    {categories.slice(3).map((cat) => {
-                      const count = categoryCounts[cat.name] || 0;
-                      const pct = totalNews > 0 ? Math.round((count / totalNews) * 100) : 0;
-                      return (
-                        <div key={cat.name} className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-zinc-300">{cat.name}</span>
-                            <span className="font-mono text-muted-foreground">{pct}%</span>
-                          </div>
-                          <div className="w-full bg-zinc-900 border border-zinc-800 rounded-full h-1.5 overflow-hidden">
-                            <div className={`h-full rounded-full ${cat.color.split(' ')[0]}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Ingestion Alerts */}
           <Card className="glass-panel border-zinc-900">
             <CardHeader className="flex flex-row items-center justify-between p-6">
               <div>
                 <CardTitle className="text-xs font-bold uppercase tracking-widest text-zinc-350 flex items-center gap-2">
-                  <Activity className="h-4.5 w-4.5 text-emerald-400" /> Ingestion Activity Log
+                  <Newspaper className="h-4.5 w-4.5 text-emerald-400" /> Recent Tech News Summaries
                 </CardTitle>
-                <CardDescription>Latest raw alerts analyzed by AI</CardDescription>
+                <CardDescription>Latest high-value developer feeds analyzed by AI</CardDescription>
               </div>
               <Button
                 variant="ghost"
@@ -272,36 +144,49 @@ const Dashboard = () => {
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => navigate('/feed')}
               >
-                Feed Archive <ArrowRight className="h-3 w-3 ml-1" />
+                Go to Feed <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             </CardHeader>
             <CardContent className="p-6 pt-0">
               {isDataLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
                 </div>
               ) : news.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic text-center py-6">Ecosystem index empty.</p>
+                <p className="text-xs text-muted-foreground italic text-center py-10">Ecosystem index empty.</p>
               ) : (
-                <div className="divide-y divide-zinc-900">
-                  {news.slice(0, 4).map((item) => (
-                    <div 
-                      key={item.id} 
-                      className="py-3 flex items-center justify-between group cursor-pointer"
-                      onClick={() => navigate(`/feed?news_id=${item.id}`)}
+                <div className="space-y-4">
+                  {news.slice(0, 3).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => navigate(`/news/${item.id}`)}
+                      className="p-4 bg-zinc-950/40 hover:bg-zinc-900/60 border border-zinc-900 hover:border-zinc-800 rounded-xl transition-all cursor-pointer group flex flex-col gap-2.5"
                     >
-                      <div className="flex flex-col gap-0.5 min-w-0 pr-4">
-                        <span className="text-xs font-bold text-zinc-200 truncate group-hover:text-primary transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <h3 className="text-sm font-bold text-zinc-100 group-hover:text-primary transition-colors leading-snug">
                           {item.title}
+                        </h3>
+                        <Badge variant="outline" className="text-[9px] uppercase font-mono tracking-wider bg-zinc-950 border-zinc-850 text-zinc-400 shrink-0">
+                          {item.category || 'AI'}
+                        </Badge>
+                      </div>
+                      
+                      {item.summary && (
+                        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                          {item.summary}
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono mt-1">
+                        <span className="flex items-center gap-1.5">
+                          <Globe className="h-3 w-3" /> {item.source}
                         </span>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-2 font-mono">
-                          <Globe className="h-3 w-3" /> {item.source} • {new Date(item.published_at).toLocaleDateString()}
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="h-3 w-3" /> {new Date(item.published_at).toLocaleDateString()}
                         </span>
                       </div>
-                      <Badge variant="outline" className="text-[9px] uppercase font-mono tracking-wider bg-zinc-950 border-zinc-800 text-zinc-400 shrink-0">
-                        {item.category || 'AI'}
-                      </Badge>
                     </div>
                   ))}
                 </div>
@@ -310,40 +195,8 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Right Column: Database Stats, Timestamps, and Trending Concepts */}
+        {/* Right Column: Trending Tech Radar and Category Distribution */}
         <div className="space-y-6">
-          {/* Engine Status & DB Statistics */}
-          <Card className="glass-panel border-zinc-900">
-            <CardHeader className="p-6">
-              <CardTitle className="text-xs font-bold uppercase tracking-widest text-zinc-350 flex items-center gap-2">
-                <Database className="h-4.5 w-4.5 text-indigo-400" /> Database Statistics
-              </CardTitle>
-              <CardDescription>SQLite persistent row indexes</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 pt-0 space-y-3.5 text-xs">
-              <div className="flex justify-between items-center py-1.5 border-b border-zinc-900/60 font-mono">
-                <span className="text-zinc-400">Last crawled ingest</span>
-                <span className="text-zinc-355 font-semibold text-[10px]">
-                  {getLastIngestionTime()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-zinc-900/60 font-mono">
-                <span className="text-zinc-400">Last report compiled</span>
-                <span className="text-zinc-355 font-semibold text-[10px]">
-                  {getLastCompilationTime()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-zinc-900/60 font-mono">
-                <span className="text-zinc-400">Wiki terms vector indexed</span>
-                <span className="text-primary font-bold">{wiki.length} terms</span>
-              </div>
-              <div className="flex justify-between items-center py-1.5 font-mono">
-                <span className="text-zinc-400">Radar GitHub Repos</span>
-                <span className="text-teal-400 font-bold">{repos.length} repos</span>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Trending Tech Radar */}
           <Card className="glass-panel border-zinc-900">
             <CardHeader className="p-6">
@@ -361,8 +214,8 @@ const Dashboard = () => {
               ) : wiki.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic text-center py-6">No glossary terms created.</p>
               ) : (
-                wiki.slice(0, 5).map((term) => (
-                  <div 
+                wiki.slice(0, 4).map((term) => (
+                  <div
                     key={term.id}
                     className="p-3 bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 rounded-lg flex items-center justify-between cursor-pointer transition-colors group"
                     onClick={() => navigate(`/wiki?term=${encodeURIComponent(term.term)}`)}
@@ -378,6 +231,46 @@ const Dashboard = () => {
                     {getTrendIcon(term.why_trending.toLowerCase().includes('popular') || term.why_trending.toLowerCase().includes('increasing') ? 'up' : 'stable')}
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tech Category allocation chart */}
+          <Card className="glass-panel border-zinc-900">
+            <CardHeader className="p-6">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-zinc-350 flex items-center gap-2">
+                <Layers className="h-4.5 w-4.5 text-primary" /> Category Distribution
+              </CardTitle>
+              <CardDescription>Percentage split of tech feeds</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              {isDataLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ) : totalNews === 0 ? (
+                <div className="text-center py-6 text-xs text-muted-foreground italic border border-zinc-900/60 rounded-lg">
+                  No data to analyze.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {categories.map((cat) => {
+                    const count = categoryCounts[cat.name] || 0;
+                    const pct = totalNews > 0 ? Math.round((count / totalNews) * 100) : 0;
+                    return (
+                      <div key={cat.name} className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-semibold text-zinc-300">{cat.name}</span>
+                          <span className="font-mono text-muted-foreground">{pct}%</span>
+                        </div>
+                        <div className="w-full bg-zinc-900 border border-zinc-800 rounded-full h-1.5 overflow-hidden">
+                          <div className={`h-full rounded-full ${cat.color.split(' ')[0]}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>

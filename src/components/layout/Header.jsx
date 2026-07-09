@@ -101,45 +101,6 @@ const Header = () => {
             Ctrl K
           </kbd>
         </button>
-
-        {/* Administration tools */}
-        <div className="flex items-center gap-2 border-l border-border pl-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => ingestMutation.mutate()}
-            isLoading={ingestMutation.isPending}
-            title="Trigger Web Feed Scrapers"
-            className="h-8 px-2.5 sm:px-3 text-xs"
-          >
-            <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline">Scrape Feeds</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => processMutation.mutate()}
-            isLoading={processMutation.isPending}
-            title="Summarize and Categorize stories"
-            className="h-8 px-2.5 sm:px-3 text-xs"
-          >
-            <Cpu className="h-3.5 w-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline">Run AI Pipeline</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => compileMutation.mutate()}
-            isLoading={isCompiling}
-            title="Compile Weekly AI Digest Report"
-            className="h-8 px-2.5 sm:px-3 text-xs"
-          >
-            <FilePlus2 className="h-3.5 w-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline">Compile Digest</span>
-          </Button>
-        </div>
       </div>
     </header>
   );
