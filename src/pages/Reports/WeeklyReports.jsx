@@ -75,43 +75,165 @@ const WeeklyReports = () => {
     window.print();
   };
 
-  // Convert markdown structure into styled SaaS-grade view
+  const renderInlineFormatting = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} className="font-bold text-zinc-150">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={idx} className="italic text-zinc-300">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={idx} className="bg-zinc-900 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{part.slice(1, -1)}</code>;
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
+  const parseMarkdownTable = (tableLines, tableKey) => {
+    if (tableLines.length < 2) return null;
+    
+    const rows = tableLines.map(line => {
+      return line.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+    });
+
+    const isSeparator = rows[1]?.every(cell => /^:-*-:?$|^-+$/.test(cell));
+    if (!isSeparator) return null;
+
+    const headers = rows[0];
+    const bodyRows = rows.slice(2);
+
+    return (
+      <div key={tableKey} className="overflow-x-auto my-4 rounded-xl border border-zinc-900 shadow-lg bg-zinc-950/40 print:border-zinc-300">
+        <table className="w-full border-collapse text-left text-xs font-sans print:text-zinc-950">
+          <thead>
+            <tr className="bg-zinc-900/80 border-b border-zinc-800 print:bg-zinc-100 print:border-zinc-350">
+              {headers.map((h, i) => (
+                <th key={i} className="p-4 font-bold text-zinc-150 uppercase tracking-wider text-[10px] print:text-zinc-900">
+                  {renderInlineFormatting(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-900/60 print:divide-zinc-200">
+            {bodyRows.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-zinc-900/20 transition-colors print:hover:bg-transparent">
+                {row.map((cell, cIdx) => {
+                  const cellLines = cell.split(/<br\s*\/?>/i);
+                  return (
+                    <td key={cIdx} className="p-4 text-zinc-300 leading-relaxed align-top print:text-zinc-800">
+                      {cellLines.map((line, lIdx) => (
+                        <div key={lIdx} className="my-1">
+                          {renderInlineFormatting(line)}
+                        </div>
+                      ))}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   const renderMarkdown = (text) => {
     if (!text) return <p className="text-xs text-muted-foreground">Report content is empty.</p>;
-    const lines = text.split('\n');
+    
+    const parts = text.split(/(```[\s\S]*?```)/g);
+    
     return (
       <div className="space-y-4 font-sans text-sm text-zinc-300 leading-relaxed max-w-3xl print:text-zinc-950">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('# ')) {
+        {parts.map((part, idx) => {
+          if (part.startsWith('```') && part.endsWith('```')) {
+            const match = part.match(/```(\w*)\n([\s\S]*?)```/);
+            const lang = match ? match[1] : 'code';
+            const code = match ? match[2] : part.slice(3, -3);
+            
             return (
-              <h1 key={idx} className="text-xl font-extrabold text-foreground border-b border-zinc-900 pb-2 mt-6 font-mono tracking-tight print:text-zinc-950 print:border-zinc-300">
-                {trimmed.replace(/^#\s+/, '')}
-              </h1>
+              <div key={idx} className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 font-mono text-xs my-3 shadow-sm print:border-zinc-300 print:bg-white">
+                <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-[10px] text-muted-foreground uppercase font-bold tracking-wider print:bg-zinc-50 print:border-zinc-200 print:text-zinc-800">
+                  <span>{lang || 'code'}</span>
+                </div>
+                <pre className="p-4 overflow-x-auto text-zinc-300 select-all leading-relaxed whitespace-pre print:text-zinc-900">{code}</pre>
+              </div>
             );
+          } else {
+            const lines = part.split('\n');
+            const elements = [];
+            let currentTableLines = [];
+
+            const flushTable = () => {
+              if (currentTableLines.length > 0) {
+                const tableKey = `table-${idx}-${elements.length}`;
+                const tableElement = parseMarkdownTable(currentTableLines, tableKey);
+                if (tableElement) {
+                  elements.push(tableElement);
+                } else {
+                  currentTableLines.forEach((tLine) => {
+                    elements.push(
+                      <p key={`fb-${idx}-${elements.length}`} className="my-1.5 print:text-zinc-950">
+                        {renderInlineFormatting(tLine)}
+                      </p>
+                    );
+                  });
+                }
+                currentTableLines = [];
+              }
+            };
+
+            lines.forEach((line) => {
+              const trimmed = line.trim();
+              if (trimmed.startsWith('|')) {
+                currentTableLines.push(line);
+              } else {
+                flushTable();
+
+                if (!trimmed) return;
+                
+                if (trimmed.startsWith('---') || trimmed.replace(/^[*-]\s*/, '').startsWith('---')) {
+                  elements.push(<hr key={`hr-${idx}-${elements.length}`} className="border-zinc-900 my-4 print:border-zinc-200" />);
+                } else if (trimmed.startsWith('# ')) {
+                  elements.push(
+                    <h1 key={`h1-${idx}-${elements.length}`} className="text-xl font-extrabold text-foreground border-b border-zinc-900 pb-2 mt-6 font-mono tracking-tight print:text-zinc-950 print:border-zinc-300">
+                      {trimmed.replace(/^#\s+/, '')}
+                    </h1>
+                  );
+                } else if (trimmed.startsWith('## ')) {
+                  elements.push(
+                    <h2 key={`h2-${idx}-${elements.length}`} className="text-lg font-bold text-zinc-150 border-b border-zinc-900/60 pb-1 mt-5 font-mono tracking-tight print:text-zinc-900 print:border-zinc-300">
+                      {trimmed.replace(/^##\s+/, '')}
+                    </h2>
+                  );
+                } else if (trimmed.startsWith('### ')) {
+                  elements.push(
+                    <h3 key={`h3-${idx}-${elements.length}`} className="text-base font-bold text-primary mt-4 font-mono tracking-tight print:text-zinc-900">
+                      {trimmed.replace(/^###\s+/, '')}
+                    </h3>
+                  );
+                } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+                  elements.push(
+                    <li key={`li-${idx}-${elements.length}`} className="ml-5 list-disc pl-1 text-zinc-300 marker:text-primary print:text-zinc-900">
+                      {renderInlineFormatting(trimmed.replace(/^[*-]\s+/, ''))}
+                    </li>
+                  );
+                } else {
+                  elements.push(
+                    <p key={`p-${idx}-${elements.length}`} className="my-1.5 print:text-zinc-950">
+                      {renderInlineFormatting(line)}
+                    </p>
+                  );
+                }
+              }
+            });
+
+            flushTable();
+
+            return <div key={idx} className="space-y-2">{elements}</div>;
           }
-          if (trimmed.startsWith('## ')) {
-            return (
-              <h2 key={idx} className="text-lg font-bold text-zinc-150 border-b border-zinc-900/60 pb-1 mt-5 font-mono tracking-tight print:text-zinc-900 print:border-zinc-300">
-                {trimmed.replace(/^##\s+/, '')}
-              </h2>
-            );
-          }
-          if (trimmed.startsWith('### ')) {
-            return (
-              <h3 key={idx} className="text-base font-bold text-primary mt-4 font-mono tracking-tight print:text-zinc-900">
-                {trimmed.replace(/^###\s+/, '')}
-              </h3>
-            );
-          }
-          if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
-            return (
-              <li key={idx} className="ml-5 list-disc pl-1 text-zinc-300 marker:text-primary print:text-zinc-900">
-                {trimmed.replace(/^[*-]\s+/, '')}
-              </li>
-            );
-          }
-          return trimmed ? <p key={idx} className="my-1.5 print:text-zinc-950">{trimmed}</p> : null;
         })}
       </div>
     );
@@ -121,19 +243,10 @@ const WeeklyReports = () => {
     <div className="h-[calc(100vh-10rem)] flex flex-col md:flex-row gap-6 animate-fade-in print:h-auto print:gap-0">
       {/* Left panel: Weekly reports index */}
       <div className="w-full md:w-80 border border-zinc-900 bg-zinc-950/40 rounded-xl flex flex-col overflow-hidden glass-panel shrink-0 print:hidden">
-        <div className="p-4 border-b border-zinc-900 flex items-center justify-between bg-card/30">
+        <div className="p-4 border-b border-zinc-900 flex items-center bg-card/30">
           <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="h-4 w-4" /> Digests Archive
           </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => compileMutation.mutate()}
-            isLoading={compileMutation.isPending}
-            className="h-7 px-2 border-zinc-800 hover:border-primary text-xs"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" /> Compile
-          </Button>
         </div>
 
         {/* List index */}

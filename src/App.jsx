@@ -14,6 +14,8 @@ const DevWiki = lazy(() => import('@/pages/Wiki/DevWiki'));
 const WeeklyReports = lazy(() => import('@/pages/Reports/WeeklyReports'));
 const AIChat = lazy(() => import('@/pages/Chat/AIChat'));
 const Settings = lazy(() => import('@/pages/Settings/Settings'));
+const NewsDetail = lazy(() => import('@/pages/News/NewsDetail'));
+const GitHubDetail = lazy(() => import('@/pages/GitHub/GitHubDetail'));
 
 // Set up TanStack Query Client with V5 specifications
 const queryClient = new QueryClient({
@@ -45,7 +47,9 @@ function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="feed" element={<Feed />} />
+              <Route path="news/:id" element={<NewsDetail />} />
               <Route path="github" element={<GitHubRadar />} />
+              <Route path="github/:id" element={<GitHubDetail />} />
               <Route path="wiki" element={<DevWiki />} />
               <Route path="reports" element={<WeeklyReports />} />
               <Route path="chat" element={<AIChat />} />

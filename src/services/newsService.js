@@ -24,5 +24,10 @@ export const newsService = {
   getRelatedNews: async (newsId) => {
     const response = await api.get(`/news/${newsId}/related`);
     return response.data;
+  },
+
+  getNewsItem: async (newsId) => {
+    const response = await api.get(`/news/${newsId}`);
+    return response.data;
   }
 };

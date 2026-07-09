@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Github, 
@@ -17,6 +18,7 @@ import Badge from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 
 const GitHubRadar = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('stars-desc'); // stars-desc, stars-asc, name-asc
 
@@ -154,72 +156,46 @@ const GitHubRadar = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredRepos.map((repo) => {
             const detectedLang = detectLanguage(repo);
             return (
               <Card 
                 key={repo.id}
-                className="glass-panel border-zinc-900 hover:border-zinc-800 transition-all flex flex-col justify-between group overflow-hidden"
+                onClick={() => navigate(`/github/${repo.id}`)}
+                className="glass-panel border-zinc-900 hover:border-zinc-800 cursor-pointer transition-all flex flex-col justify-between group overflow-hidden h-44 hover:shadow-lg hover:shadow-emerald-500/[0.01]"
               >
-                <div className="p-6 space-y-4 flex-1">
-                  {/* Title & External Link */}
-                  <div className="flex items-start justify-between gap-4">
-                    <h2 className="text-base font-bold font-mono tracking-tight text-zinc-200 group-hover:text-primary transition-colors truncate">
-                      {repo.repo_name}
-                    </h2>
-                    <a
-                      href={repo.repo_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-muted-foreground hover:text-foreground p-1 transition-colors shrink-0"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
+                <div className="p-5 space-y-2.5 flex-1">
+                  {/* Title */}
+                  <h2 className="text-sm font-bold font-mono tracking-tight text-zinc-200 group-hover:text-primary transition-colors truncate">
+                    {repo.repo_name}
+                  </h2>
 
-                  {/* Description */}
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                    {repo.description || 'No description listed by the author.'}
+                  {/* Description - 1 Line clamp */}
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1">
+                    {repo.description || 'No description listed.'}
                   </p>
-
-                  {/* Cursor-style AI explanation alert callout */}
-                  {repo.why_it_matters_summary && (
-                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5 relative overflow-hidden">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase tracking-widest">
-                        <Sparkles className="h-3.5 w-3.5" /> AI Significance Assessment
-                      </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed font-sans">
-                        {repo.why_it_matters_summary}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer Metadata */}
-                <div className="px-6 py-4 bg-zinc-950/60 border-t border-zinc-900/60 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                  <div className="flex items-center gap-4">
+                <div className="px-5 py-3 bg-zinc-950/60 border-t border-zinc-900/60 flex items-center justify-between text-[9px] text-muted-foreground font-mono">
+                  <div className="flex items-center gap-3">
                     {/* Stars */}
                     <span className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" /> {formatStars(repo.stars_count)}
+                      <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" /> {formatStars(repo.stars_count)}
                     </span>
                     
                     {/* Language dot */}
                     {detectedLang !== 'Not Available' && (
-                      <span className="flex items-center gap-1.5">
-                        <span className={`h-2.5 w-2.5 rounded-full ${getLanguageColor(detectedLang)}`} />
+                      <span className="flex items-center gap-1">
+                        <span className={`h-2 w-2 rounded-full ${getLanguageColor(detectedLang)}`} />
                         {detectedLang}
                       </span>
                     )}
-
-                    {/* Unexposed metrics */}
-                    <span className="hidden sm:flex items-center gap-1 opacity-60">
-                      Forks: <span className="italic">Not Available</span>
-                    </span>
                   </div>
 
-                  <span className="text-[9px] opacity-60">
-                    Tracked {new Date(repo.created_at).toLocaleDateString()}
+                  <span className="opacity-60">
+                    {new Date(repo.created_at).toLocaleDateString()}
                   </span>
                 </div>
               </Card>
