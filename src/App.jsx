@@ -52,7 +52,7 @@ function App() {
               <Route path="github/:id" element={<GitHubDetail />} />
               <Route path="wiki" element={<DevWiki />} />
               <Route path="reports" element={<WeeklyReports />} />
-              <Route path="chat" element={<AIChat />} />
+              <Route path="chat" element={<Navigate to="/" replace />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

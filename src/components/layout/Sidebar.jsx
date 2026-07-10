@@ -33,12 +33,11 @@ const Sidebar = () => {
   });
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'devBot', path: '/', icon: MessageSquare },
     { name: 'Daily Feed', path: '/feed', icon: Newspaper },
     { name: 'GitHub Radar', path: '/github', icon: Github },
     { name: 'Dev Wiki', path: '/wiki', icon: BookOpen },
     { name: 'Weekly Reports', path: '/reports', icon: FileText },
-    { name: 'AI Chat Room', path: '/chat', icon: MessageSquare },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
