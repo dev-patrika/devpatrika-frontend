@@ -272,7 +272,7 @@ const Dashboard = () => {
       const isLastPart = idx === parts.length - 1;
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
-          <strong key={idx} className="font-bold text-zinc-100">
+          <strong key={idx} className="font-bold text-foreground">
             {part.slice(2, -2)}
             {isLastPart && showCursor && (
               <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse rounded-sm align-middle" />
@@ -282,7 +282,7 @@ const Dashboard = () => {
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         return (
-          <em key={idx} className="italic text-zinc-300">
+          <em key={idx} className="italic text-foreground/70">
             {part.slice(1, -1)}
             {isLastPart && showCursor && (
               <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse rounded-sm align-middle" />
@@ -292,7 +292,7 @@ const Dashboard = () => {
       }
       if (part.startsWith('`') && part.endsWith('`')) {
         return (
-          <code key={idx} className="bg-zinc-900 px-1.5 py-0.5 rounded text-xs text-primary font-mono">
+          <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-xs text-primary font-mono border border-border">
             {part.slice(1, -1)}
             {isLastPart && showCursor && (
               <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse rounded-sm align-middle" />
@@ -348,24 +348,24 @@ const Dashboard = () => {
     const bodyRows = rows.slice(2);
 
     return (
-      <div key={tableKey} className="overflow-x-auto my-4 rounded-xl border border-zinc-900 shadow-lg bg-zinc-950/40">
+      <div key={tableKey} className="overflow-x-auto my-4 rounded-xl border border-border shadow-sm bg-card">
         <table className="w-full border-collapse text-left text-xs font-sans">
           <thead>
-            <tr className="bg-zinc-900/80 border-b border-zinc-800">
+            <tr className="bg-muted/50 border-b border-border">
               {headers.map((h, i) => (
-                <th key={i} className="p-4 font-bold text-zinc-150 uppercase tracking-wider text-[10px]">
+                <th key={i} className="p-4 font-bold text-foreground uppercase tracking-wider text-[10px]">
                   {renderInlineFormatting(h, citations)}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-900/60">
+          <tbody className="divide-y divide-border">
             {bodyRows.map((row, rIdx) => (
-              <tr key={rIdx} className="hover:bg-zinc-900/20 transition-colors">
+              <tr key={rIdx} className="hover:bg-muted/30 transition-colors">
                 {row.map((cell, cIdx) => {
                   const cellLines = cell.split(/<br\s*\/?>/i);
                   return (
-                    <td key={cIdx} className="p-4 text-zinc-300 leading-relaxed align-top">
+                    <td key={cIdx} className="p-4 text-foreground/80 leading-relaxed align-top">
                       {cellLines.map((line, lIdx) => (
                         <div key={lIdx} className="my-1">
                           {renderInlineFormatting(line, citations)}
@@ -387,7 +387,7 @@ const Dashboard = () => {
     const parts = text.split(/(```[\s\S]*?```)/g);
 
     return (
-      <div className="space-y-4 font-sans text-sm text-zinc-300 leading-relaxed max-w-3xl">
+      <div className="space-y-4 font-sans text-sm text-foreground/80 leading-relaxed max-w-3xl">
         {parts.map((part, idx) => {
           const isLastPart = idx === parts.length - 1;
           if (part.startsWith('```') && part.endsWith('```')) {
@@ -396,17 +396,17 @@ const Dashboard = () => {
             const code = match ? match[2] : part.slice(3, -3);
 
             return (
-              <div key={idx} className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 font-mono text-xs my-2.5 shadow-sm">
-                <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+              <div key={idx} className="border border-border rounded-xl overflow-hidden bg-muted/30 font-mono text-xs my-2.5 shadow-sm">
+                <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                   <span>{lang || 'code'}</span>
                   <button
                     onClick={() => handleCopyText(code)}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
                   >
                     <Copy className="h-3 w-3" /> Copy Code
                   </button>
                 </div>
-                <pre className="p-4 overflow-x-auto text-zinc-300 select-all leading-relaxed whitespace-pre-wrap">{code}</pre>
+                <pre className="p-4 overflow-x-auto text-foreground select-all leading-relaxed whitespace-pre-wrap">{code}</pre>
               </div>
             );
           } else {
@@ -446,28 +446,28 @@ const Dashboard = () => {
                 const isLastLine = isLastPart && lines.length - 1 === lIdx;
 
                 if (trimmed.startsWith('---') || trimmed.replace(/^[*-]\s*/, '').startsWith('---')) {
-                  elements.push(<hr key={`hr-${idx}-${elements.length}`} className="border-zinc-900 my-4" />);
+                  elements.push(<hr key={`hr-${idx}-${elements.length}`} className="border-border my-4" />);
                 } else if (trimmed.startsWith('# ')) {
                   elements.push(
-                    <h1 key={`h1-${idx}-${elements.length}`} className="text-xl font-extrabold text-foreground border-b border-zinc-900 pb-2 mt-6 font-mono tracking-tight">
+                    <h1 key={`h1-${idx}-${elements.length}`} className="text-xl font-extrabold text-foreground border-b border-border pb-2 mt-6 font-serif tracking-tight">
                       {trimmed.replace(/^#\s+/, '')}
                     </h1>
                   );
                 } else if (trimmed.startsWith('## ')) {
                   elements.push(
-                    <h2 key={`h2-${idx}-${elements.length}`} className="text-lg font-bold text-zinc-150 border-b border-zinc-900/60 pb-1 mt-5 font-mono tracking-tight">
+                    <h2 key={`h2-${idx}-${elements.length}`} className="text-lg font-bold text-foreground border-b border-border/60 pb-1 mt-5 font-serif tracking-tight">
                       {trimmed.replace(/^##\s+/, '')}
                     </h2>
                   );
                 } else if (trimmed.startsWith('### ')) {
                   elements.push(
-                    <h3 key={`h3-${idx}-${elements.length}`} className="text-base font-bold text-primary mt-4 font-mono tracking-tight">
+                    <h3 key={`h3-${idx}-${elements.length}`} className="text-base font-bold text-primary mt-4 font-serif tracking-tight">
                       {trimmed.replace(/^###\s+/, '')}
                     </h3>
                   );
                 } else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
                   elements.push(
-                    <li key={`li-${idx}-${elements.length}`} className="ml-5 list-disc pl-1 text-zinc-300 marker:text-primary">
+                    <li key={`li-${idx}-${elements.length}`} className="ml-5 list-disc pl-1 text-foreground/80 marker:text-primary">
                       {renderInlineFormatting(trimmed.replace(/^[*-]\s+/, ''), citations, showCursor && isLastLine)}
                     </li>
                   );
@@ -532,33 +532,38 @@ const Dashboard = () => {
             
             {/* COLLAPSIBLE CONVERSATIONS HISTORY SIDEBAR */}
             {showHistorySidebar && (
-              <div className="hidden md:flex w-60 border border-zinc-900 bg-zinc-950/20 rounded-2xl flex-col overflow-hidden glass-panel shrink-0 animate-fade-in min-h-0">
-                <div className="p-3.5 border-b border-zinc-900 flex items-center justify-between bg-card/10">
-                  <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 font-mono">
-                    <History className="h-3.5 w-3.5 text-primary animate-pulse" /> History
+              <div className="hidden md:flex w-64 border border-border bg-card rounded-2xl flex-col overflow-hidden shrink-0 animate-fade-in min-h-0 shadow-sm">
+                {/* Sidebar Header */}
+                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
+                  <h3 className="text-sm font-bold font-serif text-foreground flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    Conversations
                   </h3>
                   <button
                     onClick={createNewSession}
-                    className="p-1 rounded hover:bg-zinc-800 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    className="h-7 px-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                     title="New Chat Session"
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-3 w-3" /> New
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
+                {/* Newspaper Rule Divider */}
+                <div className="rule-h-double mx-4" />
+
+                <div className="flex-1 overflow-y-auto p-2.5 space-y-1">
                   {sessions.length === 0 ? (
-                    <div className="text-center py-12 text-[10px] text-zinc-500 italic">
+                    <div className="text-center py-12 text-[10px] text-muted-foreground italic font-serif">
                       No past conversations.
                     </div>
                   ) : (
                     sessions.map((s) => (
                       <div
                         key={s.id}
-                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all group border ${
+                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group border ${
                           activeSessionId === s.id
-                            ? 'bg-primary/10 text-primary border-primary/20 font-bold'
-                            : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-foreground border-transparent'
+                            ? 'bg-primary/8 border-primary/20 shadow-sm'
+                            : 'border-transparent hover:bg-muted/50 hover:border-border'
                         }`}
                       >
                         {renamingId === s.id ? (
@@ -567,28 +572,35 @@ const Dashboard = () => {
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(s.id)}
-                              className="bg-zinc-900 text-foreground border border-zinc-800 rounded px-1.5 py-0.5 text-[10px] w-full focus:outline-none focus:border-primary font-mono"
+                              className="bg-background text-foreground border border-border rounded-lg px-2 py-1 text-[10px] w-full focus:outline-none focus:border-primary font-sans"
                               autoFocus
                             />
-                            <button onClick={() => handleSaveRename(s.id)} className="text-primary hover:text-emerald-400 cursor-pointer">
-                              <Check className="h-3 w-3" />
+                            <button onClick={() => handleSaveRename(s.id)} className="text-primary hover:text-primary/80 cursor-pointer p-0.5">
+                              <Check className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => setRenamingId(null)} className="text-muted-foreground hover:text-foreground cursor-pointer">
-                              <X className="h-3 w-3" />
+                            <button onClick={() => setRenamingId(null)} className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5">
+                              <X className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         ) : (
                           <>
                             <button
                               onClick={() => setActiveSessionId(s.id)}
-                              className="flex-1 text-[11px] truncate text-left font-sans mr-2 cursor-pointer"
+                              className="flex-1 min-w-0 text-left mr-2 cursor-pointer"
                             >
-                              {s.title}
+                              <div className={`text-[11px] truncate font-sans ${
+                                activeSessionId === s.id ? 'text-primary font-bold' : 'text-foreground/80'
+                              }`}>
+                                {s.title}
+                              </div>
+                              <div className="text-[8px] text-muted-foreground font-mono mt-0.5">
+                                {new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </div>
                             </button>
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={() => handleStartRename(s)}
-                                className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                                className="p-1 text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/10 cursor-pointer transition-colors"
                                 title="Rename Session"
                               >
                                 <Edit2 className="h-3 w-3" />
@@ -600,7 +612,7 @@ const Dashboard = () => {
                                     toast.success('Session deleted.');
                                   }
                                 }}
-                                className="p-1 text-muted-foreground hover:text-red-400 rounded cursor-pointer"
+                                className="p-1 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 cursor-pointer transition-colors"
                                 title="Delete Session"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -614,10 +626,8 @@ const Dashboard = () => {
                 </div>
                 
                 {sessions.length > 0 && (
-                  <div className="p-3 border-t border-zinc-900 bg-card/10">
-                    <Button
-                      variant="outline"
-                      size="sm"
+                  <div className="p-3 border-t border-border bg-muted/20">
+                    <button
                       onClick={() => {
                         if (window.confirm('Clear all conversation histories?')) {
                           clearHistory();
@@ -625,43 +635,53 @@ const Dashboard = () => {
                           toast.success('Cleared all histories.');
                         }
                       }}
-                      className="w-full text-[10px] text-muted-foreground border-zinc-900 hover:border-red-950/40 hover:bg-red-950/10 hover:text-red-400 py-1.5"
+                      className="w-full h-8 border border-border hover:bg-destructive/8 text-muted-foreground hover:text-destructive rounded-xl text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      Clear All History
-                    </Button>
+                      <Trash2 className="h-3 w-3" /> Clear All History
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
             {/* DOCKED ACTIVE CHAT AREA */}
-            <div className="flex-1 border border-zinc-900 bg-zinc-950/40 rounded-2xl flex flex-col overflow-hidden glass-panel relative min-h-0">
+            <div className="flex-1 border border-border bg-card rounded-2xl flex flex-col overflow-hidden relative min-h-0 shadow-sm">
               
-              {/* CHAT AREA HEADER */}
-              <div className="px-4 py-3 border-b border-zinc-900 flex items-center justify-between shrink-0 bg-background/25 backdrop-blur-sm z-10">
-                <div className="flex items-center gap-2.5">
+              {/* CHAT AREA HEADER — Editorial Masthead */}
+              <div className="px-5 py-3.5 border-b border-border flex items-center justify-between shrink-0 bg-muted/20 z-10">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => setShowHistorySidebar(!showHistorySidebar)}
-                    className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-950 hover:bg-zinc-900 text-zinc-400 hover:text-primary transition-colors hidden md:block cursor-pointer"
+                    className="p-1.5 rounded-xl border border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-primary transition-colors hidden md:block cursor-pointer"
                     title={showHistorySidebar ? "Hide History" : "Show History"}
                   >
                     <SidebarIcon className="h-4 w-4" />
                   </button>
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <div>
-                    <h2 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">devBot Assistant</h2>
-                    <p className="text-[9px] text-muted-foreground">Conversational memory active.</p>
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <Sparkles className="h-4.5 w-4.5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-foreground font-serif tracking-tight">devBot Assistant</h2>
+                      <div className="flex items-center gap-1.5">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                        </span>
+                        <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Memory active</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  {/* Model Selector */}
-                  <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1">
-                    <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex items-center gap-2.5">
+                  {/* Model Selector — Landing Page Style Pill */}
+                  <div className="flex items-center gap-1.5 bg-card border border-border rounded-xl px-2.5 py-1.5 select-none">
+                    <Cpu className="h-3.5 w-3.5 text-primary animate-pulse" />
                     <select
                       value={selectedModel}
                       onChange={(e) => setSelectedModel(e.target.value)}
-                      className="bg-transparent text-zinc-350 focus:outline-none text-[10px] font-semibold cursor-pointer"
+                      className="bg-transparent text-primary focus:outline-none text-[10px] font-bold cursor-pointer"
                     >
                       {modelsLoading ? (
                         <option>Loading...</option>
@@ -669,7 +689,7 @@ const Dashboard = () => {
                         <option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option>
                       ) : (
                         models.map(m => (
-                          <option key={m.model} value={m.model} className="bg-zinc-950 text-zinc-300">
+                          <option key={m.model} value={m.model} className="bg-card text-foreground">
                             {m.provider} - {m.model}
                           </option>
                         ))
@@ -677,37 +697,42 @@ const Dashboard = () => {
                     </select>
                   </div>
 
-                  {/* New Chat */}
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  {/* New Chat — Pill Button */}
+                  <button
                     onClick={handleNewChat}
-                    className="h-8 border-zinc-800 text-[10px] text-muted-foreground hover:text-primary transition-all font-mono"
+                    className="h-8 px-3.5 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <Plus className="h-3.5 w-3.5 mr-1" /> New Chat
-                  </Button>
+                    <Plus className="h-3.5 w-3.5" /> New Chat
+                  </button>
                 </div>
               </div>
 
               {/* MESSAGES CONTAINER */}
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-5 space-y-4">
                 {activeMessages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-center py-20 text-xs text-muted-foreground italic">
-                    Initializing RAG context...
+                  <div className="h-full flex flex-col items-center justify-center text-center py-20 space-y-3 select-none">
+                    <Cpu className="h-8 w-8 text-primary/40 animate-pulse" />
+                    <p className="text-xs text-muted-foreground italic font-serif">Initializing RAG context...</p>
                   </div>
                 ) : (
                   activeMessages.map((msg) => (
                     <div 
                       key={msg.id}
-                      className={`flex gap-4 p-4 rounded-xl border border-zinc-900/60 group relative ${
+                      className={`flex gap-4 p-4 rounded-2xl border group relative transition-all duration-200 ${
                         msg.role === 'user' 
-                          ? 'bg-zinc-900/20' 
-                          : 'bg-emerald-500/[0.005] border-emerald-500/5'
+                          ? 'bg-muted/30 border-border' 
+                          : 'bg-card border-border shadow-sm hover:shadow-md'
                       }`}
                     >
-                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border ${
+                      {/* Left Accent Bar */}
+                      <div className={`absolute left-0 top-4 bottom-4 w-0.5 rounded-full ${
+                        msg.role === 'user' ? 'bg-muted-foreground/20' : 'bg-primary/60'
+                      }`} />
+
+                      {/* Avatar */}
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border ml-1 ${
                         msg.role === 'user'
-                          ? 'bg-zinc-900 border-zinc-800 text-zinc-300'
+                          ? 'bg-muted border-border text-muted-foreground'
                           : 'bg-primary/10 border-primary/20 text-primary'
                       }`}>
                         {msg.role === 'user' ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
@@ -715,13 +740,15 @@ const Dashboard = () => {
 
                       <div className="flex-1 space-y-2 min-w-0">
                         <div className="flex items-center justify-between">
-                          <div className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
-                            {msg.role === 'user' ? 'Developer' : 'Intelligence Agent'}
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${
+                            msg.role === 'user' ? 'text-muted-foreground font-mono' : 'text-primary font-serif text-[11px]'
+                          }`}>
+                            {msg.role === 'user' ? 'You' : 'Intelligence Agent'}
                           </div>
                           
                           <button
                             onClick={() => handleCopyText(msg.content)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground rounded transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/10 transition-all"
                             title="Copy Response"
                           >
                             <Copy className="h-3.5 w-3.5" />
@@ -736,25 +763,25 @@ const Dashboard = () => {
 
                         {/* Citations Footer */}
                         {msg.citations?.length > 0 && (
-                          <div className="pt-3 border-t border-zinc-900/80 space-y-1.5">
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest font-mono">
-                              <BookOpen className="h-3.5 w-3.5 text-primary" /> Sources & References
+                          <div className="pt-3 mt-2 border-t border-border space-y-2">
+                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase tracking-widest font-mono">
+                              <BookOpen className="h-3.5 w-3.5" /> Sources & References
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               {msg.citations.map((cite) => (
                                 <div
                                   key={cite.id || cite.number}
-                                  className="p-2 bg-zinc-900/30 rounded border border-zinc-900 hover:border-zinc-800 flex items-center justify-between text-[10px]"
+                                  className="p-2.5 bg-muted/40 rounded-xl border border-border hover:border-primary/20 flex items-center justify-between text-[10px] transition-all hover:shadow-sm"
                                 >
-                                  <span className="text-zinc-300 truncate pr-2 font-sans">
-                                    <span className="font-bold text-primary mr-1">[{cite.id || cite.number}]</span>
+                                  <span className="text-foreground/80 truncate pr-2 font-sans">
+                                    <span className="font-bold text-primary mr-1 font-mono">[{cite.id || cite.number}]</span>
                                     {cite.title || 'Source Reference'}
                                   </span>
                                   <a
                                     href={cite.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-muted-foreground hover:text-primary transition-colors"
+                                    className="text-muted-foreground hover:text-primary transition-colors shrink-0"
                                   >
                                     <ExternalLink className="h-3 w-3" />
                                   </a>
@@ -770,18 +797,19 @@ const Dashboard = () => {
 
                 {/* Thinking Spinner */}
                 {isStreaming && activeMessages.length > 0 && activeMessages[activeMessages.length - 1].content === "" && (
-                  <div className="flex gap-4 p-4 rounded-xl border border-zinc-900/60 bg-emerald-500/[0.005]">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+                  <div className="flex gap-4 p-4 rounded-2xl border border-border bg-card shadow-sm">
+                    <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-full bg-primary/60" />
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 ml-1">
                       <Sparkles className="h-4 w-4 animate-spin" />
                     </div>
                     <div className="space-y-3 flex-1">
-                      <div className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
+                      <div className="text-[11px] font-bold text-primary uppercase tracking-wider font-serif">
                         Intelligence Agent
                       </div>
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-5/6" />
-                        <Skeleton className="h-4 w-4/5" />
-                        <Skeleton className="h-4 w-2/3" />
+                      <div className="space-y-2.5">
+                        <Skeleton className="h-4 w-5/6 rounded-lg" />
+                        <Skeleton className="h-4 w-4/5 rounded-lg" />
+                        <Skeleton className="h-4 w-2/3 rounded-lg" />
                       </div>
                     </div>
                   </div>
@@ -789,15 +817,15 @@ const Dashboard = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* DOCKED INPUT AREA */}
-              <div className="w-full px-4 border-t border-zinc-900 py-4 bg-zinc-950/40 shrink-0">
+              {/* DOCKED INPUT AREA — Matches Landing Page */}
+              <div className="w-full px-5 border-t border-border py-4 bg-muted/15 shrink-0">
                 <form 
                   onSubmit={handleSendMessage} 
-                  className={`max-w-2xl mx-auto rounded-2xl border bg-zinc-950/65 backdrop-blur-md shadow-xl transition-all duration-300 ${
-                    isStreaming ? 'border-primary/20' : 'border-zinc-850 hover:border-zinc-700'
+                  className={`max-w-2xl mx-auto rounded-2xl border bg-card shadow-md transition-all duration-300 ${
+                    isStreaming ? 'border-primary/20' : 'border-border hover:border-primary/25'
                   }`}
                 >
-                  <div className="p-3 pb-1">
+                  <div className="p-3.5 pb-1">
                     <textarea
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
@@ -810,13 +838,13 @@ const Dashboard = () => {
                       rows={2}
                       placeholder={isStreaming ? "AI is processing answer..." : "Ask devBot anything..."}
                       disabled={isStreaming}
-                      className="w-full bg-transparent border-0 text-foreground text-sm focus:outline-none resize-none placeholder-zinc-500 leading-relaxed font-sans px-1"
+                      className="w-full bg-transparent border-0 text-foreground text-xs focus:outline-none resize-none placeholder-muted-foreground/60 leading-relaxed font-sans px-1"
                     />
                   </div>
                   
-                  <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-900/60 bg-zinc-900/10">
+                  <div className="flex items-center justify-between px-3.5 py-2 border-t border-border/40 bg-muted/10">
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-[10px] text-zinc-500 font-mono">
+                      <span className="text-[10px] text-muted-foreground font-mono">
                         Enter to send, Shift+Enter for new line
                       </span>
                       
@@ -825,7 +853,7 @@ const Dashboard = () => {
                         disabled={isStreaming || !inputMessage.trim()}
                         variant="primary"
                         size="icon"
-                        className="h-8.5 w-8.5 rounded-xl shrink-0 transition-transform active:scale-95 cursor-pointer"
+                        className="h-8.5 w-8.5 rounded-xl shrink-0 transition-transform active:scale-95 cursor-pointer bg-primary text-white"
                       >
                         <Send className="h-3.5 w-3.5" />
                       </Button>
@@ -923,17 +951,22 @@ const Dashboard = () => {
 
         {/* Hover Citation Popover */}
         {hoveredCitation && (
-          <div className="absolute bottom-24 left-6 right-6 p-3 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl text-xs z-20 flex gap-2.5 animate-slide-up">
-            <Info className="h-4.5 w-4.5 text-primary shrink-0 mt-0.5" />
-            <div className="min-w-0 flex-1">
-              <div className="font-bold text-zinc-200 truncate">{hoveredCitation.title || 'Source Context Reference'}</div>
-              <div className="text-[10px] text-muted-foreground truncate font-mono mt-0.5">{hoveredCitation.url}</div>
+          <div className="absolute bottom-24 left-6 right-6 p-4 bg-card border border-primary/20 rounded-2xl shadow-lg text-xs z-20 flex gap-3 animate-slide-up">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <span className="inline-block bg-primary/10 text-primary px-2 py-0.5 rounded-full font-mono text-[9px] font-bold uppercase tracking-wider">
+                Grounded Reference
+              </span>
+              <div className="font-bold text-foreground truncate font-serif">{hoveredCitation.title || 'Source Context Reference'}</div>
+              <div className="text-[10px] text-muted-foreground truncate font-mono">{hoveredCitation.url}</div>
             </div>
             <a
               href={hoveredCitation.url}
               target="_blank"
               rel="noreferrer"
-              className="text-[10px] text-primary hover:underline shrink-0 self-center flex items-center gap-1"
+              className="text-[10px] text-primary font-bold hover:underline shrink-0 self-center flex items-center gap-1"
             >
               Open <ExternalLink className="h-3 w-3" />
             </a>

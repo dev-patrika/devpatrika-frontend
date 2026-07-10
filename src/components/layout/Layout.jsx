@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import CommandPalette from '@/pages/Search/CommandPalette';
+import FloatingChat from './FloatingChat';
 
 const Layout = () => {
   return (
@@ -20,6 +21,9 @@ const Layout = () => {
 
       {/* Command Palette search overlay */}
       <CommandPalette />
+
+      {/* Global floating chatbot widget */}
+      <FloatingChat />
     </div>
   );
 };

@@ -9,8 +9,7 @@ const Header = () => {
   const { setSearchOpen } = useUIStore();
 
   const navItems = [
-    { name: 'devBot', path: '/' },
-    { name: 'Daily Feed', path: '/feed' },
+    { name: 'Daily Feed', path: '/' },
     { name: 'GitHub Radar', path: '/github' },
     { name: 'Dev Wiki', path: '/wiki' },
     { name: 'Dev Patrika Weekly', path: '/reports' },
