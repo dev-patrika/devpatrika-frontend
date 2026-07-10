@@ -45,8 +45,8 @@ function App() {
         <Suspense fallback={<LoadingPage />}>
           <Routes>
             <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="feed" element={<Feed />} />
+              <Route index element={<Feed />} />
+              <Route path="feed" element={<Navigate to="/" replace />} />
               <Route path="news/:id" element={<NewsDetail />} />
               <Route path="github" element={<GitHubRadar />} />
               <Route path="github/:id" element={<GitHubDetail />} />
