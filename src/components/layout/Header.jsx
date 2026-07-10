@@ -1,29 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import { 
-  Search, 
-  RefreshCw, 
-  Cpu, 
-  FilePlus2,
-  Home
-} from 'lucide-react';
-import { newsService } from '@/services/newsService';
-import { reportService } from '@/services/reportService';
+import { Search, Home } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
-import Button from '../ui/Button';
 
 const Header = () => {
   const location = useLocation();
-  const queryClient = useQueryClient();
   const { setSearchOpen } = useUIStore();
-  const [isCompiling, setIsCompiling] = useState(false);
 
   // Get human-friendly title from pathname
   const getPageTitle = () => {
     const path = location.pathname;
-    if (path === '/') return 'Dashboard';
+    if (path === '/') return 'devBot';
     if (path === '/feed') return 'Daily News Feed';
     if (path === '/github') return 'GitHub Radar';
     if (path === '/wiki') return 'Developer Wiki';
@@ -32,48 +19,6 @@ const Header = () => {
     if (path === '/settings') return 'Platform Settings';
     return 'Dev Patrika';
   };
-
-  // Crawl feeds loader
-  const ingestMutation = useMutation({
-    mutationFn: newsService.triggerIngest,
-    onSuccess: (data) => {
-      toast.success(data.detail || 'Ingestion scheduled in background.');
-      queryClient.invalidateQueries({ queryKey: ['news'] });
-    },
-    onError: () => {
-      toast.error('Failed to trigger ingestion.');
-    }
-  });
-
-  // Process pending elements through LLM loader
-  const processMutation = useMutation({
-    mutationFn: newsService.triggerProcess,
-    onSuccess: (data) => {
-      toast.success(data.detail || 'AI summarization engine scheduled.');
-      queryClient.invalidateQueries({ queryKey: ['news'] });
-    },
-    onError: () => {
-      toast.error('Failed to trigger AI processing.');
-    }
-  });
-
-  // Compile weekly reports loader
-  const compileMutation = useMutation({
-    mutationFn: reportService.compileWeeklyReport,
-    onMutate: () => {
-      setIsCompiling(true);
-    },
-    onSuccess: (data) => {
-      toast.success(`Weekly digest compiled successfully! Title: ${data.title}`);
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
-      setIsCompiling(false);
-    },
-    onError: (err) => {
-      const msg = err.response?.data?.detail || 'Failed to compile weekly report (insufficient news or rate limit).';
-      toast.error(msg);
-      setIsCompiling(false);
-    }
-  });
 
   return (
     <header className="h-16 border-b border-border bg-background/50 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-10">

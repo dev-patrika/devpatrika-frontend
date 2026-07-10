@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { 
   FileText, 
   Calendar, 
@@ -16,7 +16,6 @@ import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 
 const WeeklyReports = () => {
-  const queryClient = useQueryClient();
   const [selectedReport, setSelectedReport] = useState(null);
 
   const { data: reports = [], isLoading, isError } = useQuery({
@@ -36,20 +35,6 @@ const WeeklyReports = () => {
     queryKey: ['reports', 'detail', selectedReport?.id],
     queryFn: () => reportService.getWeeklyReport(selectedReport.id),
     enabled: !!selectedReport?.id
-  });
-
-  // Manual trigger compilation mutation
-  const compileMutation = useMutation({
-    mutationFn: reportService.compileWeeklyReport,
-    onSuccess: (data) => {
-      toast.success(`Digest Compiled: ${data.title}`);
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
-      setSelectedReport(data);
-    },
-    onError: (err) => {
-      const msg = err.response?.data?.detail || 'Failed to compile report. Verify DB has at least 5 new news items.';
-      toast.error(msg);
-    }
   });
 
   const handleDownload = (report) => {
