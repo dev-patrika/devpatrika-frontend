@@ -10,14 +10,14 @@ import {
   FilterX,
   Bookmark,
   Share2,
-  BookOpenCheck
+  BookOpenCheck,
+  Newspaper
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { newsService } from '@/services/newsService';
 import Badge from '@/components/ui/Badge';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
@@ -63,8 +63,6 @@ const Feed = () => {
     })
   });
 
-
-
   const categories = [
     { value: '', label: 'All Feeds' },
     { value: 'AI', label: 'AI & ML' },
@@ -107,7 +105,7 @@ const Feed = () => {
   // Copy shareable link
   const handleShareStory = (e, item) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}/feed?news_id=${item.id}`;
+    const shareUrl = `${window.location.origin}/news/${item.id}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success('Shareable link copied to clipboard!');
   };
@@ -120,49 +118,38 @@ const Feed = () => {
     return `${minutes} min read`;
   };
 
-  // Format summaries content
-  const formatSummary = (summaryText) => {
-    if (!summaryText) return 'No AI summary generated yet. Run the AI pipeline to analyze.';
-    
-    const lines = summaryText.split('\n');
-    return (
-      <div className="space-y-4 text-zinc-300 text-sm leading-relaxed font-sans">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
-            return (
-              <li key={idx} className="ml-4 list-disc pl-1 marker:text-primary">
-                {trimmed.replace(/^[*-]\s*/, '')}
-              </li>
-            );
-          }
-          if (trimmed.startsWith('###')) {
-            return (
-              <h4 key={idx} className="text-zinc-150 font-bold text-xs mt-4 uppercase tracking-wider text-primary">
-                {trimmed.replace(/^###\s*/, '')}
-              </h4>
-            );
-          }
-          if (trimmed.startsWith('##')) {
-            return (
-              <h3 key={idx} className="text-zinc-100 font-bold text-sm mt-5 uppercase border-b border-zinc-900 pb-1.5">
-                {trimmed.replace(/^##\s*/, '')}
-              </h3>
-            );
-          }
-          return trimmed ? <p key={idx} className="my-1.5">{trimmed}</p> : null;
-        })}
-      </div>
-    );
-  };
-
   // Filter list by selected filterMode
   const displayedNews = filterMode === 'bookmarks' ? bookmarks : news;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Search and filter header */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-zinc-950/60 p-4 rounded-xl border border-zinc-900 glass-panel">
+      
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-border pb-6">
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-bold font-serif tracking-tight text-foreground flex items-center gap-2.5">
+            <Newspaper className="h-7 w-7 text-primary" /> Daily News Feed
+          </h1>
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl font-sans">
+            Curated updates from the developer ecosystem, mapped categories, and deep architectural impact reports.
+          </p>
+        </div>
+        
+        {/* Right Header Stats Info Box */}
+        <div className="flex gap-3.5 shrink-0 select-none">
+          <div className="bg-muted px-4 py-2 rounded-xl border border-border">
+            <span className="text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest block mb-0.5">Total Stories</span>
+            <span className="text-sm font-bold font-serif text-primary">{news.length > 0 ? news.length + '+' : '1.4k+'}</span>
+          </div>
+          <div className="bg-muted px-4 py-2 rounded-xl border border-border">
+            <span className="text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest block mb-0.5">Top Category</span>
+            <span className="text-sm font-bold font-serif">AI & ML</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-muted/30 p-3.5 rounded-2xl border border-border select-none">
         
         {/* Category list + bookmark filter toggle */}
         <div className="flex flex-wrap items-center gap-1.5">
@@ -170,17 +157,17 @@ const Feed = () => {
             <button
               key={cat.value}
               onClick={() => handleCategorySelect(cat.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                 category === cat.value && filterMode === 'all'
-                  ? 'bg-primary text-primary-foreground shadow-sm shadow-emerald-500/10'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-zinc-900 border border-zinc-900'
+                  ? 'bg-primary text-white shadow-sm font-bold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 bg-card border border-border'
               }`}
             >
               {cat.label}
             </button>
           ))}
           
-          <div className="h-6 w-[1px] bg-zinc-900 mx-2 hidden sm:block" />
+          <div className="h-6 w-[1px] bg-border mx-2 hidden sm:block" />
 
           {/* Bookmarks Toggle button */}
           <button
@@ -188,10 +175,10 @@ const Feed = () => {
               setFilterMode(filterMode === 'bookmarks' ? 'all' : 'bookmarks');
               setCategory('');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 cursor-pointer ${
               filterMode === 'bookmarks'
-                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/10'
-                : 'text-muted-foreground hover:text-foreground hover:bg-zinc-900 border border-zinc-900'
+                ? 'bg-primary text-white shadow-sm font-bold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 bg-card border border-border'
             }`}
           >
             <Bookmark className="h-3.5 w-3.5" /> Bookmarked ({bookmarks.length})
@@ -204,8 +191,8 @@ const Feed = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search news titles..."
-            leftIcon={<Search className="h-4 w-4" />}
-            className="bg-zinc-900 border-zinc-800 focus-visible:ring-primary text-sm"
+            leftIcon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
+            className="bg-card border-border focus-visible:ring-primary text-xs h-8.5 rounded-xl"
           />
         </div>
       </div>
@@ -213,29 +200,29 @@ const Feed = () => {
       {/* Grid listing */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          <Card className="glass-panel border-zinc-900 p-6 space-y-4">
+          <Card className="bg-card border-border p-5 space-y-4 rounded-2xl h-60">
             <Skeleton className="h-4 w-1/3" />
             <Skeleton className="h-6 w-full" />
             <Skeleton className="h-16 w-full" />
           </Card>
-          <Card className="glass-panel border-zinc-900 p-6 space-y-4">
+          <Card className="bg-card border-border p-5 space-y-4 rounded-2xl h-60">
             <Skeleton className="h-4 w-1/3" />
             <Skeleton className="h-6 w-full" />
             <Skeleton className="h-16 w-full" />
           </Card>
         </div>
       ) : isError ? (
-        <div className="text-center py-12 bg-zinc-950/30 rounded-xl border border-zinc-900 flex flex-col items-center gap-3">
+        <div className="text-center py-12 bg-muted/20 rounded-2xl border border-border flex flex-col items-center gap-3">
           <FilterX className="h-8 w-8 text-red-500" />
-          <p className="text-muted-foreground text-sm">Error connecting to News Feed API.</p>
+          <p className="text-muted-foreground text-sm font-semibold">Error connecting to News Feed API.</p>
           <Button variant="outline" size="sm" onClick={refetch}>Retry Connection</Button>
         </div>
       ) : displayedNews.length === 0 ? (
-        <div className="text-center py-20 bg-zinc-950/30 rounded-xl border border-zinc-900 flex flex-col items-center gap-3">
-          <BookOpenCheck className="h-8 w-8 text-zinc-650" />
-          <p className="text-muted-foreground text-sm font-semibold">No news items found.</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {filterMode === 'bookmarks' ? 'You haven\'t bookmarked any articles yet.' : 'Try triggering ingestion feeds or resetting filters.'}
+        <div className="text-center py-20 bg-muted/20 rounded-2xl border border-border flex flex-col items-center gap-3">
+          <BookOpenCheck className="h-8 w-8 text-muted-foreground" />
+          <p className="text-muted-foreground text-sm font-bold">No news items found.</p>
+          <p className="text-xs text-muted-foreground max-w-sm font-sans">
+            {filterMode === 'bookmarks' ? "You haven't bookmarked any articles yet." : 'Try triggering ingestion feeds or resetting filters.'}
           </p>
         </div>
       ) : (
@@ -246,53 +233,56 @@ const Feed = () => {
               <Card
                 key={item.id}
                 onClick={() => handleOpenDetails(item)}
-                className="glass-panel border-zinc-900 hover:border-zinc-800 cursor-pointer transition-all flex flex-col justify-between group h-64 hover:shadow-lg hover:shadow-emerald-500/[0.01]"
+                className="bg-card hover:bg-muted/10 border-border hover:border-primary/20 cursor-pointer transition-all flex flex-col justify-between group overflow-hidden shadow-sm hover:shadow-md p-5 rounded-2xl h-60"
               >
-                <CardHeader className="p-5 pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider bg-zinc-950 border-zinc-800 text-zinc-400">
+                <div className="space-y-2.5">
+                  {/* Category and Reading Time */}
+                  <div className="flex items-center justify-between gap-2 shrink-0">
+                    <span className="bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full text-[9px] font-bold font-sans uppercase">
                       {item.category || 'AI'}
-                    </Badge>
-                    <span className="text-[9px] text-muted-foreground font-mono flex items-center gap-1">
+                    </span>
+                    <span className="text-[9px] text-muted-foreground font-mono flex items-center gap-0.5">
                       <Clock className="h-3 w-3" /> {getReadingTime(item.summary)}
                     </span>
                   </div>
-                  <CardTitle className="text-sm font-bold text-zinc-200 mt-2.5 leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+
+                  {/* Title */}
+                  <h2 className="text-sm font-bold font-serif text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                     {item.title}
-                  </CardTitle>
-                </CardHeader>
-                
-                <CardContent className="p-5 pt-0 flex-1 flex flex-col justify-between">
-                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mt-1">
+                  </h2>
+                  
+                  {/* Summary */}
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-sans">
                     {item.summary ? item.summary.replace(/^[#*-\s]+/mg, '').slice(0, 140) : item.raw_content ? item.raw_content.slice(0, 140) : 'No summary details compiled.'}
                   </p>
+                </div>
+                
+                {/* Footer details & actions */}
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono border-t border-border/40 pt-2.5 mt-1.5 shrink-0">
+                  <span className="flex items-center gap-1">
+                    <Globe className="h-3 w-3 text-primary" /> {item.source}
+                  </span>
                   
-                  <div className="mt-4 pt-4 border-t border-zinc-900/60 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                    <span className="flex items-center gap-1">
-                      <Globe className="h-3 w-3" /> {item.source}
-                    </span>
-                    
-                    {/* Share & Bookmark trigger buttons */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => handleShareStory(e, item)}
-                        className="p-1 hover:text-foreground text-muted-foreground rounded transition-colors"
-                        title="Copy Share Link"
-                      >
-                        <Share2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => handleToggleBookmark(e, item)}
-                        className={`p-1 rounded transition-colors ${
-                          isBookmarked ? 'text-indigo-400 hover:text-indigo-300' : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                        title={isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
-                      >
-                        <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-indigo-400' : ''}`} />
-                      </button>
-                    </div>
+                  {/* Share & Bookmark actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => handleShareStory(e, item)}
+                      className="p-1 hover:text-primary text-muted-foreground rounded transition-colors"
+                      title="Copy Share Link"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleToggleBookmark(e, item)}
+                      className={`p-1 rounded transition-colors ${
+                        isBookmarked ? 'text-primary hover:text-primary/80' : 'text-muted-foreground hover:text-primary'
+                      }`}
+                      title={isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
+                    >
+                      <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-primary' : ''}`} />
+                    </button>
                   </div>
-                </CardContent>
+                </div>
               </Card>
             );
           })}

@@ -16,7 +16,8 @@ import {
   X,
   RotateCcw,
   Copy,
-  XCircle
+  XCircle,
+  Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/store/chatStore';
@@ -118,7 +119,7 @@ const AIChat = () => {
                   updateLastMessage(activeSessionId, '', data.citations);
                 } else if (data.type === 'error') {
                   toast.error(data.content);
-                  updateLastMessage(activeSessionId, '\\n\\n*Error:* ' + data.content);
+                  updateLastMessage(activeSessionId, '\n\n*Error:* ' + data.content);
                 }
               } catch (e) {
                 // Ignore parse errors for incomplete chunks
@@ -129,7 +130,7 @@ const AIChat = () => {
       }
     } catch (err) {
       toast.error('Failed to connect to AI engine.');
-      updateLastMessage(activeSessionId, '\\n\\n*Error:* Connection failed.');
+      updateLastMessage(activeSessionId, '\n\n*Error:* Connection failed.');
     } finally {
       setIsStreaming(false);
     }
@@ -159,13 +160,11 @@ const AIChat = () => {
   // Clear current thread messages locally
   const handleClearThread = () => {
     if (window.confirm('Clear all messages in the active conversation?')) {
-      // Clear histories by writing empty array to current activeSessionId
       const updatedHistories = {
         ...chatHistories,
         [activeSessionId]: []
       };
       localStorage.setItem('chat_histories', JSON.stringify(updatedHistories));
-      // Trigger Zustand state update (Zustand will auto-sync on reload, but let's refresh locally)
       useChatStore.setState({ chatHistories: updatedHistories });
       toast.success('Conversation messages cleared.');
     }
@@ -188,11 +187,28 @@ const AIChat = () => {
     toast.success('Copied to clipboard');
   };
 
+  const renderInlineFormatting = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={idx} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-primary font-mono">{part.slice(1, -1)}</code>;
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
   // Custom parser to split by code blocks and render them in copy cards
   const renderMessageContent = (text, citations = []) => {
     if (!text) return null;
     
-    // Regex split code blocks ```code```
+    // Split by code blocks ```code```
     const parts = text.split(/(```[\s\S]*?```)/g);
 
     return (
@@ -205,48 +221,104 @@ const AIChat = () => {
             const code = match ? match[2] : part.slice(3, -3);
 
             return (
-              <div key={idx} className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 font-mono text-xs my-2.5 shadow-sm">
-                <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+              <div key={idx} className="border border-border rounded-xl overflow-hidden bg-card font-mono text-xs my-2.5 shadow-sm">
+                <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                   <span>{lang || 'code'}</span>
                   <button
                     onClick={() => handleCopyText(code)}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer select-none text-[9px] font-bold"
                   >
                     <Copy className="h-3 w-3" /> Copy Code
                   </button>
                 </div>
-                <pre className="p-4 overflow-x-auto text-zinc-300 select-all leading-relaxed whitespace-pre-wrap">{code}</pre>
+                <pre className="p-4 overflow-x-auto text-foreground select-all leading-relaxed whitespace-pre-wrap">{code}</pre>
               </div>
             );
           } else {
-            // Parse inline citations like [1]
-            const subparts = part.split(/(\[\d+\])/g);
+            // Split block by newlines to render subheadings, bold labels, list items, and paragraph breaks cleanly
+            const lines = part.split('\n');
             return (
-              <p key={idx} className="whitespace-pre-line text-sm leading-relaxed text-zinc-200 font-sans">
-                {subparts.map((sub, sIdx) => {
-                  const citeMatch = sub.match(/^\[(\d+)\]$/);
-                  if (citeMatch) {
-                    const citeNum = parseInt(citeMatch[1], 10);
-                    const source = citations.find(c => c.id === citeNum) || 
-                                   citations.find(c => c.number === citeNum) ||
-                                   citations[citeNum - 1];
-                    
-                    if (source) {
+              <div key={idx} className="space-y-2 text-xs leading-relaxed text-foreground/80 font-sans text-justify">
+                {lines.map((line, lIdx) => {
+                  const trimmed = line.trim();
+                  if (!trimmed || trimmed === '---' || trimmed === '...') return null;
+
+                  const parseCitations = (content) => {
+                    const subparts = content.split(/(\[\d+\])/g);
+                    return subparts.map((sub, sIdx) => {
+                      const citeMatch = sub.match(/^\[(\d+)\]$/);
+                      if (citeMatch) {
+                        const citeNum = parseInt(citeMatch[1], 10);
+                        const source = citations.find(c => c.id === citeNum) || 
+                                       citations.find(c => c.number === citeNum) ||
+                                       citations[citeNum - 1];
+                        
+                        if (source) {
+                          return (
+                            <span
+                              key={sIdx}
+                              onMouseEnter={() => setHoveredCitation(source)}
+                              onMouseLeave={() => setHoveredCitation(null)}
+                              className="inline-flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded px-1 py-0.5 mx-0.5 text-[9px] font-bold font-mono align-super cursor-pointer select-none transition-colors"
+                            >
+                              [{citeNum}]
+                            </span>
+                          );
+                        }
+                      }
+                      return renderInlineFormatting(sub);
+                    });
+                  };
+
+                  if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+                    const content = trimmed.replace(/^[*-]\s*/, '');
+                    return (
+                      <li key={lIdx} className="ml-4 list-disc pl-1 marker:text-primary">
+                        {parseCitations(content)}
+                      </li>
+                    );
+                  }
+
+                  if (trimmed.startsWith('###')) {
+                    return (
+                      <h4 key={lIdx} className="text-primary font-bold text-xs mt-3 uppercase tracking-wider font-mono">
+                        {parseCitations(trimmed.replace(/^###\s*/, ''))}
+                      </h4>
+                    );
+                  }
+                  if (trimmed.startsWith('##')) {
+                    return (
+                      <h3 key={lIdx} className="text-foreground font-bold text-sm mt-4 uppercase border-b border-border pb-1">
+                        {parseCitations(trimmed.replace(/^##\s*/, ''))}
+                      </h3>
+                    );
+                  }
+
+                  if (trimmed.startsWith('**') && trimmed.includes(':**')) {
+                    const parts = trimmed.split(/:\*\*\s*(.*)/s);
+                    if (parts.length >= 2) {
+                      const label = parts[0].replace(/^\*\*|\*\*$/g, '');
+                      const val = parts[1];
                       return (
-                        <span
-                          key={sIdx}
-                          onMouseEnter={() => setHoveredCitation(source)}
-                          onMouseLeave={() => setHoveredCitation(null)}
-                          className="inline-flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded px-1 py-0.5 mx-0.5 text-[9px] font-bold font-mono align-super cursor-pointer select-none transition-colors"
-                        >
-                          [{citeNum}]
-                        </span>
+                        <div key={lIdx} className="mt-3 first:mt-0 space-y-1">
+                          <span className="inline-block font-mono text-[8.5px] font-bold text-primary bg-primary/5 px-2 py-0.5 border border-primary/20 rounded-md uppercase tracking-wider">
+                            {label}
+                          </span>
+                          <p className="text-xs text-foreground/80 leading-relaxed pl-0.5">
+                            {parseCitations(val)}
+                          </p>
+                        </div>
                       );
                     }
                   }
-                  return sub;
+
+                  return (
+                    <p key={lIdx} className="my-1.5 leading-relaxed">
+                      {parseCitations(trimmed)}
+                    </p>
+                  );
                 })}
-              </p>
+              </div>
             );
           }
         })}
@@ -257,19 +329,17 @@ const AIChat = () => {
   return (
     <div className="h-[calc(100vh-10rem)] flex gap-6 animate-fade-in">
       {/* Left panel: Chat Sessions */}
-      <div className="w-full md:w-64 border border-zinc-900 bg-zinc-950/40 rounded-xl flex flex-col overflow-hidden glass-panel shrink-0">
-        <div className="p-4 border-b border-zinc-900 flex items-center justify-between bg-card/30">
-          <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="h-4 w-4" /> Channels
+      <div className="w-full md:w-64 border border-border bg-muted/20 rounded-2xl flex flex-col overflow-hidden shrink-0 select-none">
+        <div className="p-4 border-b border-border flex items-center justify-between bg-card">
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 font-mono">
+            <MessageSquare className="h-4 w-4 text-primary" /> Channels
           </h3>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={createNewSession}
-            className="h-7 px-2 border-zinc-800 hover:border-primary text-xs"
+            className="h-7 px-2.5 border border-border bg-card hover:bg-muted/50 text-[10px] font-bold uppercase rounded-xl flex items-center gap-1 cursor-pointer transition-all"
           >
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Thread
-          </Button>
+            <Plus className="h-3.5 w-3.5" /> New Thread
+          </button>
         </div>
 
         {/* Sessions list */}
@@ -282,10 +352,10 @@ const AIChat = () => {
             sessions.map((s) => (
               <div
                 key={s.id}
-                className={`flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all group border ${
+                className={`flex items-center justify-between px-2.5 py-2.5 rounded-xl transition-all group border ${
                   activeSessionId === s.id
                     ? 'bg-primary/10 text-primary border-primary/20 font-bold'
-                    : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-foreground border-transparent'
+                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground border-transparent'
                 }`}
               >
                 {renamingId === s.id ? (
@@ -294,9 +364,9 @@ const AIChat = () => {
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(s.id)}
-                      className="bg-zinc-900 text-foreground border border-zinc-800 rounded px-1.5 py-0.5 text-xs w-full focus:outline-none focus:border-primary font-mono"
+                      className="bg-card text-foreground border border-border rounded px-1.5 py-0.5 text-xs w-full focus:outline-none focus:border-primary font-sans"
                     />
-                    <button onClick={() => handleSaveRename(s.id)} className="text-primary hover:text-emerald-400">
+                    <button onClick={() => handleSaveRename(s.id)} className="text-primary hover:text-primary-foreground">
                       <Check className="h-3 w-3" />
                     </button>
                     <button onClick={() => setRenamingId(null)} className="text-muted-foreground hover:text-foreground">
@@ -307,20 +377,20 @@ const AIChat = () => {
                   <>
                     <button
                       onClick={() => setActiveSessionId(s.id)}
-                      className="flex-1 text-xs truncate text-left font-sans mr-2"
+                      className="flex-1 text-xs truncate text-left font-sans mr-2 cursor-pointer"
                     >
                       {s.title}
                     </button>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleStartRename(s)}
-                        className="p-1 text-muted-foreground hover:text-foreground rounded"
+                        className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
                       >
                         <Edit2 className="h-3 w-3" />
                       </button>
                       <button
                         onClick={() => deleteSession(s.id)}
-                        className="p-1 text-muted-foreground hover:text-red-400 rounded"
+                        className="p-1 text-muted-foreground hover:text-red-500 rounded cursor-pointer"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -332,221 +402,145 @@ const AIChat = () => {
           )}
         </div>
 
-        {/* Reset button footer */}
-        {sessions.length > 0 && (
-          <div className="p-3 border-t border-zinc-900 bg-card/10">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearHistory}
-              className="w-full text-xs text-muted-foreground border-zinc-900 hover:border-red-900/40 hover:bg-red-950/10 hover:text-red-400"
-            >
-              Clear Histories
-            </Button>
-          </div>
-        )}
+        {/* Clear buffer button */}
+        <div className="p-3 border-t border-border bg-card">
+          <button
+            onClick={handleClearThread}
+            disabled={activeMessages.length === 0}
+            className="w-full h-8 border border-border hover:bg-red-500/10 text-muted-foreground hover:text-red-500 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Clear History
+          </button>
+        </div>
       </div>
 
-      {/* Right panel: Active Chat Room */}
-      <div className="flex-1 border border-zinc-900 bg-zinc-950/40 rounded-xl flex flex-col overflow-hidden glass-panel relative">
-        {/* Chat settings Header */}
-        <div className="px-6 py-4 border-b border-zinc-900 bg-card/20 flex items-center justify-between shrink-0">
+      {/* Right panel: Active chat log */}
+      <div className="flex-1 border border-border bg-card rounded-2xl flex flex-col overflow-hidden relative shadow-sm">
+        
+        {/* Chat Header Status */}
+        <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-4 bg-muted/10 select-none">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <div>
-              <h2 className="text-sm font-bold text-foreground tracking-tight">AI Assistant Chat</h2>
-              <p className="text-[10px] text-muted-foreground">Conversational RAG grounded in crawled news & vector wiki index.</p>
-            </div>
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">devBot Assistant</h3>
           </div>
-          
-          <div className="flex items-center gap-2.5">
-            {/* Clear conversation */}
-            {activeMessages.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearThread}
-                className="h-8 border-zinc-800 text-[10px] text-muted-foreground hover:text-red-400"
-              >
-                <XCircle className="h-3.5 w-3.5 mr-1" /> Clear Thread
-              </Button>
-            )}
 
-            {/* Model selector dropdown */}
-            <div className="flex items-center gap-2">
-              <Cpu className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2.5 text-xs">
+            <span className="text-[10px] text-muted-foreground font-mono uppercase font-bold">Model Engine:</span>
+            {modelsLoading ? (
+              <Skeleton className="h-5 w-20" />
+            ) : (
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 text-zinc-300 rounded px-2.5 py-1 focus:outline-none focus:border-primary text-xs"
+                className="bg-card border border-border text-[11px] font-bold font-mono text-primary rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-primary shrink-0 cursor-pointer"
               >
-                {modelsLoading ? (
-                  <option>Loading models...</option>
-                ) : models.length === 0 ? (
-                  <option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option>
-                ) : (
-                  models.map(m => (
-                    <option key={m.model} value={m.model} disabled={m.status === 'inactive'}>
-                      {m.provider} - {m.model} {m.status === 'inactive' ? '(inactive)' : ''}
-                    </option>
-                  ))
-                )}
+                {models.map(m => (
+                  <option key={m.model} value={m.model}>{m.model}</option>
+                ))}
               </select>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Message feed scroll container */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+        {/* Message Log */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin">
           {activeMessages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-8">
-              <Sparkles className="h-10 w-10 text-primary mb-3 animate-pulse" />
-              <h3 className="text-sm font-semibold text-zinc-200">How can I assist your developer intelligence searches?</h3>
-              <p className="text-xs max-w-sm mt-1 leading-relaxed">
-                Ask queries like "Explain LangGraph architecture", "What trending Python tools were index recently?", or "Summarize recent Cybersecurity leaks".
-              </p>
+            <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-8 max-w-sm mx-auto space-y-3.5 select-none">
+              <Cpu className="h-9 w-9 text-primary animate-pulse" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-foreground font-serif">Ask devBot anything</p>
+                <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+                  Analyze codebase files, request developer summaries, or execute RAG queries grounded in Chroma vector indexes.
+                </p>
+              </div>
             </div>
           ) : (
-            activeMessages.map((msg) => (
-              <div 
-                key={msg.id}
-                className={`flex gap-4 p-4 rounded-xl border border-zinc-900/60 group relative ${
-                  msg.role === 'user' 
-                    ? 'bg-zinc-900/30' 
-                    : 'bg-emerald-500/[0.01] border-emerald-500/5'
-                }`}
-              >
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border ${
-                  msg.role === 'user'
-                    ? 'bg-zinc-900 border-zinc-800 text-zinc-300'
-                    : 'bg-primary/10 border-primary/20 text-primary'
-                }`}>
-                  {msg.role === 'user' ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                </div>
-
-                <div className="flex-1 space-y-3 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">
-                      {msg.role === 'user' ? 'Developer' : 'Intelligence Agent'}
+            activeMessages.map((msg, i) => {
+              const isUser = msg.role === 'user';
+              return (
+                <div key={i} className={`flex gap-3.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  {/* Avatar Icon */}
+                  {!isUser && (
+                    <div className="h-8.5 w-8.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 select-none">
+                      <Cpu className="h-4.5 w-4.5" />
                     </div>
-                    
-                    {/* Copy message button */}
-                    <button
-                      onClick={() => handleCopyText(msg.content)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground rounded transition-opacity"
-                      title="Copy response"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
+                  )}
+
+                  {/* Bubble content */}
+                  <div className={`p-4 rounded-2xl max-w-[85%] border shadow-sm ${
+                    isUser
+                      ? 'bg-primary/5 border-primary/15 text-foreground rounded-tr-none'
+                      : 'bg-muted/30 border-border text-foreground rounded-tl-none'
+                  }`}>
+                    {renderMessageContent(msg.content, msg.citations)}
                   </div>
 
-                  {renderMessageContent(msg.content, msg.citations)}
-
-                  {/* Message footer citation section */}
-                  {msg.citations?.length > 0 && (
-                    <div className="pt-3 border-t border-zinc-900/80 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                        <BookOpen className="h-3.5 w-3.5 text-primary" /> Sources & Citations
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {msg.citations.map((cite) => (
-                          <div
-                            key={cite.id || cite.number}
-                            className="p-2 bg-zinc-900/30 rounded border border-zinc-900 hover:border-zinc-800 flex items-center justify-between text-[10px]"
-                          >
-                            <span className="text-zinc-300 truncate pr-2 font-sans">
-                              <span className="font-bold text-primary mr-1">[{cite.id || cite.number}]</span>
-                              {cite.title || 'Source Reference'}
-                            </span>
-                            <a
-                              href={cite.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Regenerate trigger at bottom of assistant message */}
-                  {msg.role === 'assistant' && msg === activeMessages[activeMessages.length - 1] && (
-                    <div className="flex pt-2">
-                      <button
-                        onClick={handleRegenerate}
-                        disabled={isStreaming}
-                        className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        <RotateCcw className="h-3 w-3" /> Regenerate Response
-                      </button>
+                  {isUser && (
+                    <div className="h-8.5 w-8.5 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground shrink-0 select-none">
+                      <User className="h-4.5 w-4.5 text-primary" />
                     </div>
                   )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
-
-          {/* Thinking spinner loader */}
-          {isStreaming && activeMessages.length > 0 && activeMessages[activeMessages.length - 1].content === "" && (
-            <div className="flex gap-4 p-4 rounded-xl border border-zinc-900/60 bg-emerald-500/[0.01]">
-              <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
-                <Sparkles className="h-4 w-4 animate-spin" />
-              </div>
-              <div className="space-y-3 flex-1">
-                <div className="text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">
-                  Intelligence Agent
-                </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              </div>
-            </div>
-          )}
+          
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Hover Citation Overlay Dialog */}
+        {/* Citation Tooltip Info Box */}
         {hoveredCitation && (
-          <div className="absolute bottom-20 left-6 right-6 p-3 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl text-xs z-20 flex gap-2.5 animate-slide-up">
-            <Info className="h-4.5 w-4.5 text-primary shrink-0 mt-0.5" />
-            <div className="min-w-0 flex-1">
-              <div className="font-bold text-zinc-200 truncate">{hoveredCitation.title || 'Source Context Reference'}</div>
-              <div className="text-[10px] text-muted-foreground truncate font-mono mt-0.5">{hoveredCitation.url}</div>
+          <div className="absolute bottom-18 left-6 right-6 p-4 bg-card border border-primary/20 rounded-xl shadow-lg z-30 flex items-start gap-3.5 animate-slide-up select-none">
+            <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <span className="bg-primary/15 text-primary px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase">
+                Grounded Reference Source
+              </span>
+              <p className="text-xs font-bold text-foreground truncate">{hoveredCitation.title || 'Source reference'}</p>
+              <p className="text-[10px] text-muted-foreground line-clamp-2 leading-normal">{hoveredCitation.snippet || hoveredCitation.content}</p>
+              {hoveredCitation.url && (
+                <a
+                  href={hoveredCitation.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline pt-1"
+                >
+                  Inspect document <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </div>
-            <a
-              href={hoveredCitation.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] text-primary hover:underline shrink-0 self-center flex items-center gap-1"
-            >
-              Open <ExternalLink className="h-3 w-3" />
-            </a>
+            <XCircle className="h-4.5 w-4.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0" onClick={() => setHoveredCitation(null)} />
           </div>
         )}
 
-        {/* Input send message area */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-zinc-900 bg-card/25 shrink-0 flex gap-2">
-          <Input
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={isStreaming ? "AI is processing answer..." : "Ask the developer assistant..."}
-            disabled={isStreaming}
-            className="bg-zinc-900 border-zinc-800 text-sm focus-visible:ring-primary flex-1"
-          />
-          <Button
+        {/* Input Panel Form */}
+        <form onSubmit={handleSendMessage} className="p-4 border-t border-border bg-muted/10 flex items-center gap-3">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder={isStreaming ? "Streaming response..." : "Ask developer bot concept..."}
+              disabled={isStreaming}
+              className="w-full pl-4 pr-10 py-3 bg-card border border-border focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+            />
+            {isStreaming && (
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
+                <span className="animate-spin h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full"></span>
+              </div>
+            )}
+          </div>
+
+          <button
             type="submit"
-            disabled={isStreaming || !inputMessage.trim()}
-            variant="primary"
-            size="icon"
-            className="h-9 w-9"
+            disabled={!inputMessage.trim() || isStreaming}
+            className="h-9 px-4.5 bg-primary hover:bg-primary/95 disabled:bg-muted text-white rounded-xl flex items-center justify-center transition-all cursor-pointer select-none active:scale-98 disabled:opacity-50 disabled:pointer-events-none"
           >
-            <Send className="h-4 w-4" />
-          </Button>
+            <Send className="h-4.5 w-4.5" />
+          </button>
         </form>
       </div>
     </div>

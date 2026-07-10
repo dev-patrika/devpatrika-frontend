@@ -37,7 +37,7 @@ const Sidebar = () => {
     { name: 'Daily Feed', path: '/feed', icon: Newspaper },
     { name: 'GitHub Radar', path: '/github', icon: Github },
     { name: 'Dev Wiki', path: '/wiki', icon: BookOpen },
-    { name: 'Weekly Reports', path: '/reports', icon: FileText },
+    { name: 'Dev Patrika Weekly', path: '/reports', icon: FileText },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 

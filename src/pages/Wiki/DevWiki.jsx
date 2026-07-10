@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -14,7 +14,12 @@ import {
   GitBranch,
   Info,
   Layers,
-  Activity
+  Activity,
+  Bookmark,
+  Users,
+  Award,
+  Sparkles,
+  SearchIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { wikiService } from '@/services/wikiService';
@@ -23,12 +28,15 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import Badge from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
 
 const DevWiki = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const suggestionsRef = useRef(null);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [selectedTerm, setSelectedTerm] = useState(null);
   const [activeTab, setActiveTab] = useState('definition'); // definition, timeline, references
   
@@ -81,6 +89,8 @@ const DevWiki = () => {
   const handleSelectTerm = (term) => {
     setSelectedTerm(term);
     setSearchParams({ term: term.term });
+    setSearchQuery('');
+    setSearchFocused(false);
   };
 
   const handleCreateTermSubmit = (e) => {
@@ -91,6 +101,17 @@ const DevWiki = () => {
     }
     generateMutation.mutate(newTermName.trim());
   };
+
+  // Click outside suggestions list to close
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Filter list of terms based on search box
   const filteredTerms = terms.filter(t => 
@@ -132,7 +153,6 @@ const DevWiki = () => {
       tags.push('API & Backend');
     }
     
-    // Fallback tag
     if (tags.length === 0) tags.push('Developer Utility');
     return tags;
   };
@@ -146,230 +166,161 @@ const DevWiki = () => {
     return `https://${trimmed}`;
   };
 
-  const renderInlineFormatting = (text) => {
-    if (!text) return '';
-    // Split by bold (**), italics (*), and inline code (`)
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
-    return parts.map((part, idx) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx} className="font-bold text-zinc-150">{part.slice(2, -2)}</strong>;
-      }
-      if (part.startsWith('*') && part.endsWith('*')) {
-        return <em key={idx} className="italic text-zinc-300">{part.slice(1, -1)}</em>;
-      }
-      if (part.startsWith('`') && part.endsWith('`')) {
-        return <code key={idx} className="bg-zinc-900 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{part.slice(1, -1)}</code>;
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  const parseMarkdownTable = (tableLines, tableKey) => {
-    if (tableLines.length < 2) return null;
-    
-    const rows = tableLines.map(line => {
-      return line.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-    });
-
-    const isSeparator = rows[1]?.every(cell => /^:-*-:?$|^-+$/.test(cell));
-    if (!isSeparator) return null;
-
-    const headers = rows[0];
-    const bodyRows = rows.slice(2);
-
-    return (
-      <div key={tableKey} className="overflow-x-auto my-4 rounded-xl border border-zinc-900 shadow-lg bg-zinc-950/40">
-        <table className="w-full border-collapse text-left text-xs font-sans">
-          <thead>
-            <tr className="bg-zinc-900/80 border-b border-zinc-800">
-              {headers.map((h, i) => (
-                <th key={i} className="p-4 font-bold text-zinc-150 uppercase tracking-wider text-[10px]">
-                  {renderInlineFormatting(h)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-900/60">
-            {bodyRows.map((row, rIdx) => (
-              <tr key={rIdx} className="hover:bg-zinc-900/20 transition-colors">
-                {row.map((cell, cIdx) => {
-                  const cellLines = cell.split(/<br\s*\/?>/i);
-                  return (
-                    <td key={cIdx} className="p-4 text-zinc-300 leading-relaxed align-top">
-                      {cellLines.map((line, lIdx) => (
-                        <div key={lIdx} className="my-1">
-                          {renderInlineFormatting(line)}
-                        </div>
-                      ))}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
   const formatWikiContent = (text) => {
-    if (!text) return null;
-    
-    const parts = text.split(/(```[\s\S]*?```)/g);
-    
+    if (!text) return '';
+    const lines = text.split('\n');
     return (
-      <div className="space-y-3.5 text-zinc-300 text-sm leading-relaxed font-sans">
-        {parts.map((part, idx) => {
-          if (part.startsWith('```') && part.endsWith('```')) {
-            const match = part.match(/```(\w*)\n([\s\S]*?)```/);
-            const lang = match ? match[1] : 'code';
-            const code = match ? match[2] : part.slice(3, -3);
-            
+      <div className="space-y-3 font-sans text-xs leading-relaxed text-foreground/80 text-justify">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
             return (
-              <div key={idx} className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 font-mono text-xs my-3 shadow-sm">
-                <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                  <span>{lang || 'code'}</span>
-                </div>
-                <pre className="p-4 overflow-x-auto text-zinc-300 select-all leading-relaxed whitespace-pre">{code}</pre>
-              </div>
+              <li key={idx} className="ml-4 list-disc pl-1 marker:text-primary">
+                {renderInlineFormatting(trimmed.replace(/^[*-]\s*/, ''))}
+              </li>
             );
-          } else {
-            const lines = part.split('\n');
-            const elements = [];
-            let currentTableLines = [];
-
-            const flushTable = () => {
-              if (currentTableLines.length > 0) {
-                const tableKey = `table-${idx}-${elements.length}`;
-                const tableElement = parseMarkdownTable(currentTableLines, tableKey);
-                if (tableElement) {
-                  elements.push(tableElement);
-                } else {
-                  currentTableLines.forEach((tLine) => {
-                    elements.push(
-                      <p key={`fb-${idx}-${elements.length}`} className="my-1.5">
-                        {renderInlineFormatting(tLine)}
-                      </p>
-                    );
-                  });
-                }
-                currentTableLines = [];
-              }
-            };
-
-            lines.forEach((line) => {
-              const trimmed = line.trim();
-              if (trimmed.startsWith('|')) {
-                currentTableLines.push(line);
-              } else {
-                flushTable();
-
-                if (!trimmed) return;
-                
-                if (trimmed.startsWith('---') || trimmed.replace(/^[*-]\s*/, '').startsWith('---')) {
-                  elements.push(<hr key={`hr-${idx}-${elements.length}`} className="border-zinc-900 my-4" />);
-                } else if (trimmed.startsWith('###')) {
-                  elements.push(
-                    <h4 key={`h4-${idx}-${elements.length}`} className="text-zinc-150 font-bold text-xs mt-4 uppercase tracking-wider text-primary">
-                      {trimmed.replace(/^###\s*/, '')}
-                    </h4>
-                  );
-                } else if (trimmed.startsWith('##')) {
-                  elements.push(
-                    <h3 key={`h3-${idx}-${elements.length}`} className="text-zinc-100 font-bold text-sm mt-5 uppercase border-b border-zinc-900/60 pb-1.5 text-zinc-200">
-                      {trimmed.replace(/^##\s*/, '')}
-                    </h3>
-                  );
-                } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
-                  elements.push(
-                    <li key={`li-${idx}-${elements.length}`} className="ml-4 list-disc pl-1 marker:text-primary">
-                      {renderInlineFormatting(trimmed.replace(/^[*-]\s*/, ''))}
-                    </li>
-                  );
-                } else {
-                  elements.push(
-                    <p key={`p-${idx}-${elements.length}`} className="my-1.5">
-                      {renderInlineFormatting(line)}
-                    </p>
-                  );
-                }
-              }
-            });
-
-            flushTable();
-
-            return <div key={idx} className="space-y-2">{elements}</div>;
           }
+          return trimmed ? <p key={idx}>{renderInlineFormatting(line)}</p> : null;
         })}
       </div>
     );
   };
 
-  // Convert timeline markdown into visual progression cards
-  const renderTimelineProgress = (md) => {
-    if (!md) return <p className="text-xs text-muted-foreground">Generating timeline content...</p>;
+  const renderInlineFormatting = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={idx} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-primary font-mono">{part.slice(1, -1)}</code>;
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
 
-    if (md.includes('|')) {
-      return formatWikiContent(md);
-    }
+  const parseTimelineMarkdown = (markdown) => {
+    if (!markdown) return [];
+    if (Array.isArray(markdown)) return markdown;
+    if (typeof markdown !== 'string') return [];
     
-    // Simple parser to extract Phase blocks
-    const blocks = [];
-    const lines = md.split('\n');
-    let currentBlock = null;
-
-    lines.forEach(line => {
-      const trimmed = line.trim();
+    const sections = markdown.split(/(?=###?\s+Phase|##?\s+Phase)/gi);
+    const milestones = [];
+    
+    sections.forEach((section) => {
+      const lines = section.trim().split('\n');
+      if (lines.length === 0 || !lines[0]) return;
       
-      const phaseMatch = trimmed.match(/(?:Phase\s+(\d+)|Phase\s+(\d+)\s*:|###\s+(?:Phase\s+\d+|\d+\.\s+Phase\s+\d+))/i) || 
-                         trimmed.match(/\*\*(Phase\s+\d+|Phase\s+\d+\s*:|Phase\s+\d+)\*\*/i);
+      const titleLine = lines[0].replace(/^[#\s*]+/, '').trim();
+      const details = lines.slice(1).join('\n').trim();
       
-      if (phaseMatch || trimmed.startsWith('###') || (trimmed.startsWith('1.') || trimmed.startsWith('2.') || trimmed.startsWith('3.') || trimmed.startsWith('4.'))) {
-        if (currentBlock) {
-          blocks.push(currentBlock);
+      let year = 'STAGE';
+      let title = titleLine;
+      
+      const match = titleLine.match(/Phase\s+(\d+):\s*(.*)/i);
+      if (match) {
+        title = match[2];
+        year = `PHASE ${match[1]}`;
+      } else {
+        const fallbackMatch = titleLine.match(/Phase\s+(\d+)/i);
+        if (fallbackMatch) {
+          year = `PHASE ${fallbackMatch[1]}`;
         }
-        currentBlock = {
-          title: trimmed.replace(/^[#\s\d.*]+|[*#:]+$/g, ''),
-          content: []
-        };
-      } else if (trimmed && currentBlock) {
-        currentBlock.content.push(trimmed);
+      }
+      
+      if (title) {
+        milestones.push({
+          year,
+          event: title,
+          details
+        });
       }
     });
     
-    if (currentBlock) {
-      blocks.push(currentBlock);
-    }
+    return milestones;
+  };
 
-    if (blocks.length === 0) {
-      return (
-        <div className="space-y-3 font-sans text-sm text-zinc-300">
-          {lines.map((l, i) => l.trim() ? <p key={i}>{l}</p> : null)}
-        </div>
-      );
-    }
+  const formatTimelineDetails = (detailsText) => {
+    if (!detailsText) return null;
+    
+    const rawLines = detailsText.split('\n');
+    const lines = [];
+    
+    rawLines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === '---' || trimmed === '...') return;
+      
+      if (trimmed.includes('**') && trimmed.includes(':**')) {
+        const segments = trimmed.split(/(?=\*\*[^*]+:\*\*)/g);
+        segments.forEach((seg) => {
+          const segTrimmed = seg.trim();
+          if (segTrimmed && segTrimmed !== '---' && segTrimmed !== '...') {
+            lines.push(segTrimmed);
+          }
+        });
+      } else {
+        lines.push(trimmed);
+      }
+    });
 
     return (
-      <div className="relative border-l border-zinc-800 ml-4 pl-6 space-y-6 py-2">
-        {blocks.map((block, idx) => (
-          <div key={idx} className="relative group">
-            {/* Pulsing indicator node */}
-            <div className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-950 border border-primary text-primary group-hover:scale-110 transition-transform shadow-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold font-mono text-primary bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded">
-                0{idx + 1}
-              </span>
-              <h4 className="text-sm font-bold text-zinc-100 font-mono tracking-tight group-hover:text-primary transition-colors">
-                {block.title}
-              </h4>
-            </div>
-            
-            <p className="text-xs text-muted-foreground mt-2 leading-relaxed font-sans max-w-2xl bg-zinc-900/40 p-3.5 rounded-lg border border-zinc-900 shadow-sm">
-              {block.content.join(' ')}
+      <div className="space-y-3 mt-2 text-[11px] leading-relaxed text-muted-foreground font-sans">
+        {lines.map((line, idx) => {
+          if (line.startsWith('*') || line.startsWith('-')) {
+            const content = line.replace(/^[*-]\s*/, '');
+            return (
+              <li key={idx} className="ml-3 list-disc pl-0.5 marker:text-primary/70">
+                {renderInlineFormatting(content)}
+              </li>
+            );
+          }
+          
+          if (line.startsWith('**') && line.includes(':**')) {
+            const parts = line.split(/:\*\*\s*(.*)/s);
+            if (parts.length >= 2) {
+              const label = parts[0].replace(/^\*\*|\*\*$/g, '');
+              const val = parts[1];
+              return (
+                <div key={idx} className="mt-3 first:mt-0 space-y-1">
+                  <span className="inline-block font-mono text-[8.5px] font-bold text-primary bg-primary/5 px-2 py-0.5 border border-primary/20 rounded-md uppercase tracking-wider">
+                    {label}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed pl-0.5">
+                    {renderInlineFormatting(val)}
+                  </p>
+                </div>
+              );
+            }
+          }
+          
+          return (
+            <p key={idx} className="my-1 leading-relaxed">
+              {renderInlineFormatting(line)}
             </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderTimelineProgress = (timeline) => {
+    if (!timeline || timeline.length === 0) {
+      return <p className="text-xs text-muted-foreground italic pl-2">No historical milestone recorded.</p>;
+    }
+    return (
+      <div className="space-y-4 relative pl-4 border-l-2 border-primary/25 py-2 font-sans text-xs select-none">
+        {timeline.map((item, idx) => (
+          <div key={idx} className="relative group/time">
+            <div className="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full bg-primary border-2 border-background ring-4 ring-background group-hover/time:scale-110 transition-all" />
+            <div className="bg-muted/40 border border-border p-3.5 rounded-xl space-y-1 hover:border-primary/20 transition-all">
+              <span className="font-mono text-[9px] font-bold text-primary block">{item.year || 'MILESTONE'}</span>
+              <p className="font-serif italic text-foreground text-xs leading-snug">{item.event}</p>
+              {item.details && formatTimelineDetails(item.details)}
+            </div>
           </div>
         ))}
       </div>
@@ -377,217 +328,321 @@ const DevWiki = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col md:flex-row gap-6 animate-fade-in">
-      {/* Left panel: Terms list */}
-      <div className="w-full md:w-80 border border-zinc-900 bg-zinc-950/40 rounded-xl flex flex-col overflow-hidden glass-panel shrink-0">
-        <div className="p-4 border-b border-zinc-900 space-y-3 bg-card/30">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-              <BookOpen className="h-4 w-4" /> Glossary
-            </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="h-7 px-2 border-zinc-800 hover:border-primary text-xs"
-            >
-              <Plus className="h-3.5 w-3.5 mr-1" /> Request Term
-            </Button>
+    <div className="space-y-8 animate-fade-in">
+      
+      {/* 1. SEARCH-FIRST SECTION */}
+      <section className="w-full max-w-2xl mx-auto text-center px-4 pt-4 relative">
+        <h2 className="font-serif text-4xl md:text-5xl font-black tracking-tight text-foreground mb-3">Dev Wiki</h2>
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto mb-6">
+          The definitive index of modern developer primitives, architectural patterns, and emerging tech stacks.
+        </p>
+        
+        {/* Search pill container */}
+        <div className="relative group max-w-lg mx-auto" ref={suggestionsRef}>
+          <div className="absolute inset-y-0 left-4.5 flex items-center pointer-events-none text-muted-foreground z-10">
+            <Search className="h-4.5 w-4.5" />
           </div>
-
-          <Input
+          <input 
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search terms..."
-            leftIcon={<Search className="h-3.5 w-3.5" />}
-            className="bg-zinc-900/80 border-zinc-800 text-xs h-8"
+            onFocus={() => setSearchFocused(true)}
+            placeholder="Search concept, framework, or pattern..."
+            className="w-full pl-12 pr-12 py-3 bg-card border border-border focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all text-xs text-foreground placeholder:text-muted-foreground/60 shadow-sm"
           />
-        </div>
+          <kbd className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:inline-flex h-5 select-none items-center gap-0.5 rounded-full border border-border bg-muted px-2 font-mono text-[9px] font-medium text-muted-foreground">
+            Ctrl K
+          </kbd>
 
-        {/* Scrollable list */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {termsLoading ? (
-            <div className="p-4 space-y-2">
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-6 w-full" />
+          {/* Suggestions Dropdown */}
+          {searchFocused && filteredTerms.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl shadow-lg border border-border overflow-hidden z-50 text-left animate-slide-up">
+              <div className="p-1.5 space-y-0.5 max-h-60 overflow-y-auto">
+                <div className="px-3.5 py-1.5 text-[8.5px] font-mono font-bold text-muted-foreground uppercase tracking-widest border-b border-border/40">Glossary Suggestions</div>
+                {filteredTerms.slice(0, 8).map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => handleSelectTerm(t)}
+                    className="px-3.5 py-2.5 hover:bg-muted/60 cursor-pointer flex items-center justify-between group/item rounded-xl transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="material-symbols-outlined text-[16px] text-muted-foreground group-hover/item:text-primary">schema</span>
+                      <span className="text-xs font-semibold text-foreground group-hover/item:text-primary transition-colors">{t.term}</span>
+                    </div>
+                    <span className="font-mono text-[8px] font-bold bg-muted px-2 py-0.5 border border-border rounded-full text-muted-foreground group-hover/item:text-primary">CONCEPT</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : isError ? (
-            <div className="text-center py-6 text-xs text-muted-foreground">
-              Error connecting to API.
-            </div>
-          ) : filteredTerms.length === 0 ? (
-            <div className="text-center py-12 text-xs text-zinc-500">
-              No matching terms found.
-            </div>
-          ) : (
-            filteredTerms.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => handleSelectTerm(t)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-mono transition-all text-left group ${
-                  selectedTerm?.id === t.id
-                    ? 'bg-primary/10 text-primary border border-primary/20 font-bold'
-                    : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-foreground border border-transparent'
-                }`}
-              >
-                <span>{t.term}</span>
-                <ChevronRight className={`h-3.5 w-3.5 text-zinc-600 transition-transform group-hover:translate-x-0.5 ${
-                  selectedTerm?.id === t.id ? 'text-primary' : ''
-                }`} />
-              </button>
-            ))
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Right panel: Details view */}
-      <div className="flex-1 border border-zinc-900 bg-zinc-950/40 rounded-xl flex flex-col overflow-hidden glass-panel">
-        {selectedTerm ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Header info */}
-            <div className="p-6 border-b border-zinc-900 bg-card/20 shrink-0">
-              <h2 className="text-2xl font-bold font-mono tracking-tight text-foreground">{selectedTerm.term}</h2>
-              <p className="text-xs text-muted-foreground font-mono mt-1 flex items-center gap-1.5">
-                <Calendar className="h-3 w-3" /> Indexed {new Date(selectedTerm.created_at).toLocaleDateString()}
-              </p>
-            </div>
-
-            {/* Tab navigation headers */}
-            <div className="flex border-b border-zinc-900 bg-zinc-950 shrink-0">
-              {[
-                { id: 'definition', label: 'Definition', icon: FileText },
-                { id: 'timeline', label: 'Evolution Timeline', icon: GitBranch },
-                { id: 'references', label: 'References & Links', icon: ExternalLink }
-              ].map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-3 border-b-2 text-xs font-semibold tracking-wide transition-all ${
-                      activeTab === tab.id
-                        ? 'border-primary text-primary bg-primary/5'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-zinc-900/30'
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Scrollable Detail Body */}
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-              {activeTab === 'definition' && (
-                <div className="space-y-6">
-                  {/* Definition */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5" /> Glossary Definition
+      {/* 2. TWO-COLUMN LAYOUT */}
+      {selectedTerm ? (
+        <section className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
+          
+          {/* Left Column: Concept details and Adoption cycle */}
+          <div className="space-y-6">
+            
+            {/* Concept Card */}
+            <Card className="bg-card border-border p-6 rounded-2xl shadow-sm relative space-y-5">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2 select-none">
+                    <span className="bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full font-label-sm text-[9px] uppercase font-bold tracking-wider">
+                      Core Primitive
                     </span>
-                    <div className="bg-zinc-900/30 p-5 rounded-xl border border-zinc-900/80 shadow-md">
-                      {formatWikiContent(selectedTerm.definition)}
-                    </div>
-                  </div>
- 
-                  {/* Why Trending */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-amber-400">
-                      <TrendingUp className="h-4 w-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Why It's Trending</span>
-                    </div>
-                    <div className="bg-zinc-900/30 p-5 rounded-xl border border-zinc-900/80 shadow-md">
-                      {formatWikiContent(selectedTerm.why_trending)}
-                    </div>
-                  </div>
-
-                  {/* Concept tags system */}
-                  <div className="space-y-2 pt-2">
-                    <div className="flex items-center gap-1.5 text-zinc-400">
-                      <Activity className="h-3.5 w-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Classification Tags</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {getConceptTags(selectedTerm).map((tag, i) => (
-                        <Badge key={i} variant="outline" className="bg-zinc-900 text-zinc-300 border-zinc-800 font-mono text-[9px]">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'timeline' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <History className="h-4 w-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Historical Progression Timeline</span>
-                  </div>
-                  {timelineLoading ? (
-                    <div className="space-y-3 pl-6 py-2">
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                    </div>
-                  ) : (
-                    renderTimelineProgress(timelineData?.timeline)
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'references' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <ExternalLink className="h-4 w-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Ecosystem References</span>
+                    <span className="text-[9px] font-mono text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> Updated: {new Date(selectedTerm.created_at).toLocaleDateString()}
+                    </span>
                   </div>
                   
-                  {getLinks(selectedTerm).length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic pl-2">No references attached to this term.</p>
-                  ) : (
-                    <ul className="space-y-2.5">
-                      {getLinks(selectedTerm).map((url, i) => (
-                        <li key={i} className="flex items-center gap-2.5 text-xs bg-zinc-900/40 p-3 rounded-lg border border-zinc-900">
-                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                          <a
-                            href={getAbsoluteUrl(url)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-zinc-300 hover:text-primary hover:underline break-all"
-                          >
-                            {url}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <h3 className="font-serif text-2xl md:text-3xl font-black text-foreground">
+                    {selectedTerm.term}
+                  </h3>
                 </div>
-              )}
+                
+                <button className="text-muted-foreground hover:text-primary transition-colors cursor-pointer select-none">
+                  <Bookmark className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Tab Navigation headers */}
+              <div className="flex border-b border-border/60 select-none">
+                {[
+                  { id: 'definition', label: 'Definition', icon: FileText },
+                  { id: 'timeline', label: 'Evolution Timeline', icon: GitBranch },
+                  { id: 'references', label: 'References & Links', icon: ExternalLink }
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-4.5 py-2.5 border-b-2 text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                        activeTab === tab.id
+                          ? 'border-primary text-primary bg-primary/5 font-bold'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/20'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tab Content rendering */}
+              <div className="min-h-36">
+                {activeTab === 'definition' && (
+                  <div className="space-y-5">
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 font-mono select-none">
+                        <Layers className="h-3.5 w-3.5" /> Glossary Definition
+                      </span>
+                      <div className="bg-muted/40 p-4.5 rounded-xl border border-border">
+                        {formatWikiContent(selectedTerm.definition)}
+                      </div>
+                    </div>
+
+                    {selectedTerm.why_trending && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 font-mono select-none">
+                          <TrendingUp className="h-3.5 w-3.5" /> Why Curation is Trending
+                        </span>
+                        <div className="bg-muted/40 p-4.5 rounded-xl border border-border">
+                          {formatWikiContent(selectedTerm.why_trending)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Concept classification tags */}
+                    <div className="space-y-1.5 pt-1.5 select-none">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 font-mono">
+                        <Activity className="h-3.5 w-3.5 text-primary" /> Classification Tags
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {getConceptTags(selectedTerm).map((tag, i) => (
+                          <span key={i} className="bg-muted px-2.5 py-0.5 rounded-full border border-border text-[9px] font-mono text-foreground font-semibold">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'timeline' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-primary font-mono text-[10px] uppercase font-bold select-none">
+                      <History className="h-3.5 w-3.5" /> Historical Progression Timeline
+                    </div>
+                    {timelineLoading ? (
+                      <div className="space-y-3 pl-6 py-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : (
+                      renderTimelineProgress(parseTimelineMarkdown(timelineData?.timeline))
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'references' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-primary font-mono text-[10px] uppercase font-bold select-none">
+                      <ExternalLink className="h-3.5 w-3.5" /> Ecosystem References
+                    </div>
+                    
+                    {getLinks(selectedTerm).length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic pl-2 font-sans">No references attached to this term.</p>
+                    ) : (
+                      <ul className="space-y-2.5">
+                        {getLinks(selectedTerm).map((url, i) => (
+                          <li key={i} className="flex items-center gap-2.5 text-xs bg-muted/40 p-3.5 rounded-xl border border-border">
+                            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <a
+                              href={getAbsoluteUrl(url)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-foreground hover:text-primary hover:underline break-all font-mono text-[11px]"
+                            >
+                              {url}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* ADOPTION CYCLE VISUALIZATION */}
+            <div className="bg-card border border-border p-6 rounded-2xl shadow-sm overflow-hidden relative select-none">
+              <h4 className="font-serif font-black text-lg text-foreground mb-6">Adoption Cycle Scale</h4>
+              <div className="relative pt-6 pb-8">
+                {/* Connecting timeline axis */}
+                <div className="absolute top-[38px] left-[15%] right-[15%] h-[1.5px] bg-border" />
+                <div className="relative flex justify-between">
+                  {/* Stage 1: Announcement */}
+                  <div className="flex flex-col items-center text-center w-1/3 space-y-3.5">
+                    <div className="w-5 h-5 rounded-full bg-card border border-primary/40 z-10 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                    </div>
+                    <div>
+                      <span className="font-serif italic font-bold text-xs text-foreground block">Announcement</span>
+                      <span className="font-mono text-[8.5px] text-muted-foreground block mt-0.5">Academic / Preprints</span>
+                    </div>
+                  </div>
+                  
+                  {/* Stage 2: Community */}
+                  <div className="flex flex-col items-center text-center w-1/3 space-y-2.5">
+                    <div className="w-7 h-7 rounded-full bg-card border-2 border-primary z-10 flex items-center justify-center shadow-sm">
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                    </div>
+                    <div>
+                      <span className="font-serif italic font-bold text-xs text-primary block">Community Integration</span>
+                      <span className="font-mono text-[8.5px] text-primary/80 block mt-0.5">OSS & Emerging Tech</span>
+                      <div className="mt-2.5 mx-auto px-2 py-1 bg-primary/10 border border-primary/20 text-primary rounded-lg text-[9px] font-sans font-bold max-w-[140px]">
+                        Peak Dev Momentum
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stage 3: Enterprise */}
+                  <div className="flex flex-col items-center text-center w-1/3 space-y-3.5">
+                    <div className="w-5 h-5 rounded-full bg-muted border border-border z-10" />
+                    <div>
+                      <span className="font-serif italic font-bold text-xs text-muted-foreground block">Enterprise Standard</span>
+                      <span className="font-mono text-[8.5px] text-muted-foreground block mt-0.5">Production Adoption</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-            <BookOpen className="h-10 w-10 text-zinc-700 mb-2" />
-            <p className="text-sm font-semibold">No wiki entry selected.</p>
-            <p className="text-xs max-w-xs mt-1">
-              Select an indexed concept from the left panel glossary list or request new generation.
-            </p>
-          </div>
-        )}
-      </div>
+
+          {/* Right Column: Sidebar metadata & Curation request */}
+          <aside className="space-y-6">
+            
+            {/* Related terms/trends list */}
+            <div className="bg-muted/30 p-5 rounded-2xl border border-border select-none">
+              <h5 className="font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">Related Trends</h5>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 group cursor-pointer">
+                  <div className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary/20 transition-all">
+                    <Activity className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-serif font-bold text-foreground leading-normal">Privacy Tech Stack</p>
+                    <p className="font-mono text-[9px] text-primary font-bold">High momentum</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 group cursor-pointer">
+                  <div className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary/20 transition-all">
+                    <Layers className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-serif font-bold text-foreground leading-normal">Orchestrator SDKs</p>
+                    <p className="font-mono text-[9px] text-muted-foreground font-bold">Moderate interest</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contributors Section */}
+            <div className="bg-card p-5 rounded-2xl border border-border shadow-sm select-none">
+              <h5 className="font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">Ecosystem Edits</h5>
+              <div className="space-y-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-serif text-[10px] font-bold">JD</div>
+                  <span className="text-xs text-foreground font-sans">Jordan D. <span className="text-muted-foreground text-[10px] font-mono font-semibold">(12 edits)</span></span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-muted border border-border text-foreground/80 flex items-center justify-center font-serif text-[10px] font-bold">AM</div>
+                  <span className="text-xs text-foreground font-sans">Alex M. <span className="text-muted-foreground text-[10px] font-mono font-semibold">(8 edits)</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Request Curation Button Card */}
+            <div className="bg-muted/40 border border-border p-5 rounded-2xl space-y-4 shadow-sm select-none">
+              <h5 className="font-serif font-black text-sm text-foreground">Curation Agent</h5>
+              <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                Trigger our LangChain agent pipeline to scrape, index, and vectorize a new technical primitive in Chroma DB.
+              </p>
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="w-full bg-primary hover:bg-primary/95 text-white py-2 rounded-xl text-xs font-bold transition-all active:scale-98 shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Plus className="h-4 w-4 shrink-0" /> Request Curation
+              </button>
+            </div>
+          </aside>
+
+        </section>
+      ) : (
+        <div className="text-center py-20 bg-muted/20 rounded-2xl border border-border max-w-md mx-auto">
+          <BookOpen className="h-10 w-10 text-primary mb-3 mx-auto animate-pulse" />
+          <p className="text-sm font-semibold">No wiki entry selected.</p>
+          <p className="text-xs text-muted-foreground max-w-xs mt-1 mx-auto font-sans leading-relaxed">
+            Search for a concept above or click suggestions to view architectural breakdowns.
+          </p>
+        </div>
+      )}
 
       {/* Manual term request modal */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Request Wiki Curation"
+        title="Request Curation Worker"
         size="md"
       >
         <form onSubmit={handleCreateTermSubmit} className="space-y-4">
-          <div className="space-y-1.5 flex flex-col gap-1">
-            <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
+          <div className="space-y-1.5 flex flex-col gap-1 select-none">
+            <label className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">
               Technology Term Name
             </label>
             <Input
@@ -595,21 +650,22 @@ const DevWiki = () => {
               onChange={(e) => setNewTermName(e.target.value)}
               placeholder="e.g., LlamaIndex, Dify, LangGraph"
               required
-              className="bg-zinc-900 border-zinc-800 text-sm"
+              className="bg-card border-border text-xs h-9 rounded-xl focus-visible:ring-primary"
             />
-            <div className="flex gap-2 p-3 bg-zinc-900/40 border border-zinc-900 rounded-lg mt-2 text-[10px] text-muted-foreground leading-relaxed">
+            <div className="flex gap-2.5 p-3.5 bg-muted/40 border border-border rounded-xl mt-2 text-[10px] text-muted-foreground leading-relaxed font-sans">
               <Info className="h-4.5 w-4.5 text-primary shrink-0 mt-0.5" />
               <span>
-                This triggers a LangChain worker agent in the background to scrape documents, compile descriptions, determine trends, extract related URLs, and vectorize it inside Chroma DB.
+                This schedules a LangChain AI worker in the background to fetch documents, curate definition milestones, extract ecosystem reference URLs, and index it inside Chroma DB vector repository.
               </span>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-zinc-900">
+          <div className="flex justify-end gap-2 pt-3.5 border-t border-border select-none">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsCreateModalOpen(false)}
+              className="h-8 border-border text-xs rounded-xl"
             >
               Cancel
             </Button>
@@ -618,8 +674,9 @@ const DevWiki = () => {
               variant="primary"
               size="sm"
               isLoading={generateMutation.isPending}
+              className="h-8 text-xs rounded-xl bg-primary text-white"
             >
-              Submit Curation Worker
+              Submit Curation
             </Button>
           </div>
         </form>
