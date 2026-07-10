@@ -1,48 +1,84 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
-import { Search, Home } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import logoImg from '@/assets/logo_dpatrika.png';
 
 const Header = () => {
   const location = useLocation();
   const { setSearchOpen } = useUIStore();
 
-  // Get human-friendly title from pathname
-  const getPageTitle = () => {
-    const path = location.pathname;
-    if (path === '/') return 'devBot';
-    if (path === '/feed') return 'Daily News Feed';
-    if (path === '/github') return 'GitHub Radar';
-    if (path === '/wiki') return 'Developer Wiki';
-    if (path === '/reports') return 'Weekly Digests';
-    if (path === '/chat') return 'AI Chatbot';
-    if (path === '/settings') return 'Platform Settings';
-    return 'Dev Patrika';
-  };
+  const navItems = [
+    { name: 'devBot', path: '/' },
+    { name: 'Daily Feed', path: '/feed' },
+    { name: 'GitHub Radar', path: '/github' },
+    { name: 'Dev Wiki', path: '/wiki' },
+    { name: 'Dev Patrika Weekly', path: '/reports' },
+    { name: 'Settings', path: '/settings' },
+  ];
 
   return (
-    <header className="h-16 border-b border-border bg-background/50 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-10">
-      {/* Breadcrumb title */}
-      <div className="flex items-center gap-2">
-        <Home className="h-4 w-4 text-muted-foreground" />
-        <span className="text-muted-foreground text-sm">/</span>
-        <span className="text-sm font-semibold text-foreground tracking-tight">
-          {getPageTitle()}
-        </span>
+    <header className="h-20 border-b border-border/60 bg-background/80 backdrop-blur-md px-6 md:px-8 flex items-center justify-between sticky top-0 z-40 select-none shrink-0">
+      {/* Left section: Logo + Floating Nav Pill */}
+      <div className="flex items-center gap-6 md:gap-10">
+        {/* Brand logo */}
+        <NavLink to="/" className="flex items-center select-none shrink-0">
+          <img src={logoImg} alt="Dev Patrika Logo" className="h-14 w-auto object-contain shrink-0" />
+        </NavLink>
+
+        {/* Floating pill navigation (Desktop) */}
+        <nav className="hidden lg:flex items-center gap-1 bg-card border border-border p-1 rounded-full shadow-sm">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all duration-250 cursor-pointer ${
+                  isActive 
+                    ? 'bg-primary text-white shadow-sm font-bold scale-102' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {item.name}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* Swipeable navigation (Mobile/Tablet) */}
+        <nav className="flex lg:hidden items-center gap-2 overflow-x-auto max-w-[200px] sm:max-w-[400px] scrollbar-none shrink-0 py-1 pr-2">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all shrink-0 ${
+                  isActive 
+                    ? 'bg-primary text-white shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {item.name}
+              </NavLink>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Action buttons & Unified Search prompt */}
-      <div className="flex items-center gap-3">
+      {/* Right section: Search bar */}
+      <div className="flex items-center gap-4 shrink-0">
         {/* Search button trigger */}
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center justify-between w-48 sm:w-64 h-9 px-3 rounded-md bg-zinc-900 border border-border text-muted-foreground hover:text-foreground text-xs hover:border-zinc-700 transition-all"
+          className="flex items-center justify-between w-36 sm:w-48 md:w-56 h-8.5 px-3 rounded-full bg-card border border-border text-muted-foreground hover:text-foreground text-xs hover:border-zinc-400 transition-all select-none"
         >
-          <span className="flex items-center gap-2">
-            <Search className="h-3.5 w-3.5" />
-            Search index...
+          <span className="flex items-center gap-1.5 truncate">
+            <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">Search index...</span>
           </span>
-          <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-zinc-950 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+          <kbd className="hidden md:inline-flex h-5 select-none items-center gap-0.5 rounded-full border border-border bg-muted px-2 font-mono text-[9px] font-medium text-muted-foreground">
             Ctrl K
           </kbd>
         </button>

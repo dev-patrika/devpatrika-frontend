@@ -500,7 +500,7 @@ const Dashboard = () => {
   return (
     <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-11.5rem)] flex flex-col relative overflow-hidden">
       {/* Vercel Grid background effect */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f1f_1px,transparent_1px),linear-gradient(to_bottom,#1f1f1f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] -z-10 opacity-30" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] -z-10 opacity-30" />
 
       {/* Main Container - switch layouts smoothly */}
       <div className={`flex-1 flex flex-col justify-center min-h-0 relative transition-all duration-500 ease-in-out ${
@@ -510,17 +510,17 @@ const Dashboard = () => {
         {/* LANDING PAGE - Greeting and Status */}
         {!hasStartedChatting && (
           <div className="text-center space-y-4 mb-10 transition-all duration-500">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-950 border border-zinc-850 text-[10px] font-bold font-mono uppercase tracking-widest text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold font-mono uppercase tracking-widest text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               Automated Engine Active
             </div>
             
-            <div className="space-y-1">
-              <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-550 bg-clip-text text-transparent">
-                {greeting}, Developer
+            <div className="space-y-2">
+              <h1 className="text-4xl md:text-5xl font-serif text-foreground leading-tight tracking-tight">
+                {greeting}, <span className="italic text-primary">Developer.</span>
               </h1>
-              <p className="text-zinc-400 text-sm font-semibold tracking-wide">
-                What can I help you with today?
+              <p className="text-muted-foreground text-[10px] font-semibold tracking-wider font-mono uppercase">
+                The intelligence stream is synchronized. What's on your mind?
               </p>
             </div>
           </div>
@@ -843,11 +843,11 @@ const Dashboard = () => {
           <div className="w-full px-4">
             <form 
               onSubmit={handleSendMessage} 
-              className={`max-w-2xl mx-auto rounded-2xl border bg-zinc-950/65 backdrop-blur-md shadow-xl transition-all duration-300 ${
-                isStreaming ? 'border-primary/20' : 'border-zinc-850 hover:border-zinc-700'
+              className={`max-w-2xl mx-auto rounded-2xl border bg-card shadow-md transition-all duration-300 ${
+                isStreaming ? 'border-primary/20' : 'border-border hover:border-primary/25'
               }`}
             >
-              <div className="p-3 pb-1">
+              <div className="p-3.5 pb-1">
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
@@ -860,19 +860,19 @@ const Dashboard = () => {
                   rows={3}
                   placeholder={isStreaming ? "AI is processing answer..." : "Ask devBot anything..."}
                   disabled={isStreaming}
-                  className="w-full bg-transparent border-0 text-foreground text-sm focus:outline-none resize-none placeholder-zinc-500 leading-relaxed font-sans px-1"
+                  className="w-full bg-transparent border-0 text-foreground text-xs focus:outline-none resize-none placeholder-muted-foreground/60 leading-relaxed font-sans px-1"
                 />
               </div>
               
-              <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-900/60 bg-zinc-900/10">
+              <div className="flex items-center justify-between px-3.5 py-2 border-t border-border/40 bg-muted/10">
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 select-none">
-                      <Cpu className="h-3 w-3 text-primary animate-pulse" />
+                    <div className="flex items-center gap-1 bg-card border border-border rounded-xl px-2.5 py-1.5 select-none">
+                      <Cpu className="h-3.5 w-3.5 text-primary animate-pulse" />
                       <select
                         value={selectedModel}
                         onChange={(e) => setSelectedModel(e.target.value)}
-                        className="bg-transparent text-zinc-350 focus:outline-none text-[10px] font-bold cursor-pointer"
+                        className="bg-transparent text-primary focus:outline-none text-[10px] font-bold cursor-pointer"
                       >
                         {modelsLoading ? (
                           <option>Loading...</option>
@@ -880,7 +880,7 @@ const Dashboard = () => {
                           <option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option>
                         ) : (
                           models.map(m => (
-                            <option key={m.model} value={m.model} className="bg-zinc-950 text-zinc-300">
+                            <option key={m.model} value={m.model} className="bg-card text-foreground">
                               {m.provider} - {m.model}
                             </option>
                           ))
@@ -888,7 +888,7 @@ const Dashboard = () => {
                       </select>
                     </div>
                     
-                    <span className="text-[10px] text-zinc-500 font-mono">
+                    <span className="text-[10px] text-muted-foreground font-mono">
                       Enter to send, Shift+Enter for new line
                     </span>
                   </div>
@@ -898,7 +898,7 @@ const Dashboard = () => {
                     disabled={isStreaming || !inputMessage.trim()}
                     variant="primary"
                     size="icon"
-                    className="h-8.5 w-8.5 rounded-xl shrink-0 transition-transform active:scale-95 cursor-pointer"
+                    className="h-8.5 w-8.5 rounded-xl shrink-0 transition-transform active:scale-95 cursor-pointer bg-primary text-white"
                   >
                     <Send className="h-3.5 w-3.5" />
                   </Button>
@@ -912,7 +912,7 @@ const Dashboard = () => {
                 <button
                   key={s}
                   onClick={() => handleSuggestionClick(s)}
-                  className="text-[10px] px-3.5 py-1.5 rounded-full bg-zinc-900/40 hover:bg-zinc-900/90 border border-zinc-850 hover:border-zinc-700 transition-all text-zinc-350 cursor-pointer hover:text-foreground font-medium"
+                  className="text-[10px] px-3.5 py-1.5 rounded-full bg-card hover:bg-muted/50 border border-border hover:border-primary/20 transition-all text-muted-foreground hover:text-primary font-bold cursor-pointer shadow-sm animate-fade-in"
                 >
                   {s}
                 </button>
@@ -947,18 +947,18 @@ const Dashboard = () => {
             {/* Tile 1: Daily Feed */}
             <div 
               onClick={() => navigate('/feed')}
-              className="group p-5 bg-zinc-950/40 hover:bg-zinc-900/30 border border-zinc-900 hover:border-emerald-500/25 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/[0.02]"
+              className="group p-5 bg-card hover:bg-muted/10 border border-border hover:border-primary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-md shadow-sm"
             >
               <div className="flex items-center gap-3.5 mb-3.5">
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 transition-colors">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
                   <Newspaper className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-200">Daily Feed</h3>
+                  <h3 className="text-sm font-bold font-serif text-foreground">Daily Feed</h3>
                   <p className="text-[10px] text-muted-foreground">Aggregated tech news & summaries</p>
                 </div>
               </div>
-              <div className="space-y-2 border-t border-zinc-900/60 pt-3">
+              <div className="space-y-2 border-t border-border/40 pt-3">
                 {newsLoading ? (
                   <Skeleton className="h-8 w-full" />
                 ) : news.length === 0 ? (
@@ -966,7 +966,7 @@ const Dashboard = () => {
                 ) : (
                   news.map(n => (
                     <div key={n.id} className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-zinc-300 group-hover:text-primary transition-colors truncate">
+                      <span className="text-[10px] font-bold text-foreground/90 font-serif group-hover:text-primary transition-colors truncate">
                         {n.title}
                       </span>
                       <span className="text-[8px] font-mono text-muted-foreground">
@@ -976,7 +976,7 @@ const Dashboard = () => {
                   ))
                 )}
               </div>
-              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-zinc-400 group-hover:text-primary transition-all">
+              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-muted-foreground group-hover:text-primary transition-all">
                 <span>Browse feed</span>
                 <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -985,18 +985,18 @@ const Dashboard = () => {
             {/* Tile 2: GitHub Radar */}
             <div 
               onClick={() => navigate('/github')}
-              className="group p-5 bg-zinc-950/40 hover:bg-zinc-900/30 border border-zinc-900 hover:border-teal-500/25 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/[0.02]"
+              className="group p-5 bg-card hover:bg-muted/10 border border-border hover:border-primary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-md shadow-sm"
             >
               <div className="flex items-center gap-3.5 mb-3.5">
-                <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-400 group-hover:bg-teal-500/20 group-hover:text-teal-300 transition-colors">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
                   <Github className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-200">GitHub Radar</h3>
+                  <h3 className="text-sm font-bold font-serif text-foreground">GitHub Radar</h3>
                   <p className="text-[10px] text-muted-foreground">Trending repositories insight</p>
                 </div>
               </div>
-              <div className="space-y-2 border-t border-zinc-900/60 pt-3">
+              <div className="space-y-2 border-t border-border/40 pt-3">
                 {reposLoading ? (
                   <Skeleton className="h-8 w-full" />
                 ) : repos.length === 0 ? (
@@ -1004,7 +1004,7 @@ const Dashboard = () => {
                 ) : (
                   repos.slice(0, 2).map(r => (
                     <div key={r.id} className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-zinc-300 group-hover:text-teal-400 transition-colors truncate">
+                      <span className="text-[10px] font-bold text-foreground/90 font-serif group-hover:text-primary transition-colors truncate">
                         {r.repo_name}
                       </span>
                       <span className="text-[8px] font-mono text-muted-foreground truncate">
@@ -1014,7 +1014,7 @@ const Dashboard = () => {
                   ))
                 )}
               </div>
-              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-zinc-400 group-hover:text-teal-400 transition-all">
+              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-muted-foreground group-hover:text-primary transition-all">
                 <span>View trends</span>
                 <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -1023,18 +1023,18 @@ const Dashboard = () => {
             {/* Tile 3: Weekly Reports */}
             <div 
               onClick={() => navigate('/reports')}
-              className="group p-5 bg-zinc-950/40 hover:bg-zinc-900/30 border border-zinc-900 hover:border-amber-500/25 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/[0.02]"
+              className="group p-5 bg-card hover:bg-muted/10 border border-border hover:border-primary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-md shadow-sm"
             >
               <div className="flex items-center gap-3.5 mb-3.5">
-                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 group-hover:text-amber-300 transition-colors">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-200">Weekly Reports</h3>
+                  <h3 className="text-sm font-bold font-serif text-foreground">Dev Patrika Weekly</h3>
                   <p className="text-[10px] text-muted-foreground">Compiled digest reports</p>
                 </div>
               </div>
-              <div className="space-y-2 border-t border-zinc-900/60 pt-3">
+              <div className="space-y-2 border-t border-border/40 pt-3">
                 {reportsLoading ? (
                   <Skeleton className="h-8 w-full" />
                 ) : reports.length === 0 ? (
@@ -1042,7 +1042,7 @@ const Dashboard = () => {
                 ) : (
                   reports.slice(0, 1).map(rep => (
                     <div key={rep.id} className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-zinc-300 group-hover:text-amber-450 transition-colors truncate">
+                      <span className="text-[10px] font-bold text-foreground/90 font-serif group-hover:text-primary transition-colors truncate">
                         {rep.title}
                       </span>
                       <span className="text-[8px] font-mono text-muted-foreground">
@@ -1052,7 +1052,7 @@ const Dashboard = () => {
                   ))
                 )}
               </div>
-              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-zinc-400 group-hover:text-amber-455 transition-all">
+              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-muted-foreground group-hover:text-primary transition-all">
                 <span>View digests</span>
                 <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
               </div>
