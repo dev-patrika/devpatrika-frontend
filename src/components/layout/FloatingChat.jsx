@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/store/chatStore';
+import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import { chatService } from '@/services/chatService';
 import Skeleton from '@/components/ui/Skeleton';
 
@@ -39,6 +41,8 @@ const FloatingChat = () => {
     renameSession
   } = useChatStore();
 
+  const { isAuthenticated, setAuthModalOpen } = useAuthStore();
+  const { showConfirm } = useUIStore();
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -293,7 +297,13 @@ const FloatingChat = () => {
       {/* FLOATING BUBBLE BUTTON */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            if (!isAuthenticated) {
+              setAuthModalOpen(true);
+              return;
+            }
+            setIsOpen(true);
+          }}
           className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-white shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
           title="Open devBot Chat"
         >
