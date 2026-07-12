@@ -16,7 +16,8 @@ export const chatService = {
   },
 
   streamChatMessage: async ({ model, session_id, message }) => {
-    const response = await fetch('/api/ai/chat', {
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    const response = await fetch(`${baseUrl}/ai/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -30,7 +31,8 @@ export const chatService = {
   },
 
   sendChatMessageStream: async ({ model, session_id, message }) => {
-    const response = await fetch('/api/ai/chat', {
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    const response = await fetch(`${baseUrl}/ai/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
