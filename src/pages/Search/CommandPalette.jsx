@@ -116,7 +116,7 @@ const CommandPalette = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSearchOpen(false)}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
 
           {/* Search container */}
@@ -125,20 +125,20 @@ const CommandPalette = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-2xl bg-zinc-950/90 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden z-10 flex flex-col max-h-[60vh] glass-panel"
+            className="relative w-full max-w-2xl bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[60vh]"
           >
             {/* Search Input Bar */}
-            <div className="flex items-center px-4 border-b border-zinc-800">
-              <Search className="h-4 w-4 text-muted-foreground mr-3" />
+            <div className="flex items-center px-4 border-b border-zinc-800 bg-zinc-900/20">
+              <Search className="h-5 w-5 text-emerald-500 mr-3" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search across feed, wiki glossary, repos, weekly reports..."
-                className="w-full h-12 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                className="w-full h-14 bg-transparent text-zinc-100 placeholder:text-zinc-500 focus:outline-none text-base"
               />
               {loading && (
-                <svg className="animate-spin h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
@@ -146,30 +146,30 @@ const CommandPalette = () => {
             </div>
 
             {/* Results scrollable window */}
-            <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-800">
               {!query.trim() && (
-                <div className="py-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-                  <Search className="h-6 w-6 text-zinc-700" />
+                <div className="py-16 text-center text-zinc-500 text-sm flex flex-col items-center gap-3">
+                  <Search className="h-8 w-8 text-zinc-800" />
                   Type terms to search stories, libraries, definitions, and GitHub trends.
                 </div>
               )}
 
               {query.trim() && flatItems.length === 0 && !loading && (
-                <div className="py-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-                  <Search className="h-6 w-6 text-zinc-700" />
+                <div className="py-16 text-center text-zinc-500 text-sm flex flex-col items-center gap-3">
+                  <Search className="h-8 w-8 text-zinc-800" />
                   No results matching "{query}" found in current indices.
                 </div>
               )}
 
               {flatItems.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* News category */}
                   {results.news?.length > 0 && (
                     <div>
-                      <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase px-3 py-1 flex items-center gap-1.5">
-                        <Newspaper className="h-3 w-3" /> Daily News
+                      <div className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase px-3 py-1.5 flex items-center gap-1.5">
+                        <Newspaper className="h-3.5 w-3.5" /> Daily News
                       </div>
-                      <div className="mt-1 space-y-0.5">
+                      <div className="mt-1 space-y-1">
                         {results.news.map((item) => {
                           const flatIdx = flatItems.findIndex(f => f.type === 'news' && f.id === item.id);
                           const isSel = flatIdx === selectedIndex;
@@ -178,14 +178,14 @@ const CommandPalette = () => {
                               key={item.id}
                               onClick={() => handleSelect(flatItems[flatIdx])}
                               onMouseEnter={() => setSelectedIndex(flatIdx)}
-                              className={`flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium cursor-pointer transition-colors ${
-                                isSel ? 'bg-primary/10 text-primary border border-primary/20' : 'text-zinc-400 hover:bg-zinc-900/50 border border-transparent'
+                              className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
+                                isSel ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-zinc-400 hover:bg-zinc-900 border border-transparent'
                               }`}
                             >
                               <span className="truncate pr-4">{item.title}</span>
                               {isSel && (
-                                <span className="flex items-center gap-1 text-[10px] opacity-70">
-                                  Select <CornerDownLeft className="h-2.5 w-2.5" />
+                                <span className="flex items-center gap-1.5 text-[11px] opacity-80 text-emerald-500 shrink-0">
+                                  Select <CornerDownLeft className="h-3 w-3" />
                                 </span>
                               )}
                             </div>
@@ -198,10 +198,10 @@ const CommandPalette = () => {
                   {/* Wiki category */}
                   {results.wiki?.length > 0 && (
                     <div>
-                      <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase px-3 py-1 flex items-center gap-1.5">
-                        <BookOpen className="h-3 w-3" /> Dev Wiki Glossary
+                      <div className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase px-3 py-1.5 flex items-center gap-1.5">
+                        <BookOpen className="h-3.5 w-3.5" /> Dev Wiki Glossary
                       </div>
-                      <div className="mt-1 space-y-0.5">
+                      <div className="mt-1 space-y-1">
                         {results.wiki.map((item) => {
                           const flatIdx = flatItems.findIndex(f => f.type === 'wiki' && f.term === item.term);
                           const isSel = flatIdx === selectedIndex;
@@ -210,14 +210,14 @@ const CommandPalette = () => {
                               key={item.term}
                               onClick={() => handleSelect(flatItems[flatIdx])}
                               onMouseEnter={() => setSelectedIndex(flatIdx)}
-                              className={`flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium cursor-pointer transition-colors ${
-                                isSel ? 'bg-primary/10 text-primary border border-primary/20' : 'text-zinc-400 hover:bg-zinc-900/50 border border-transparent'
+                              className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
+                                isSel ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-zinc-400 hover:bg-zinc-900 border border-transparent'
                               }`}
                             >
                               <span className="font-mono">{item.term}</span>
                               {isSel && (
-                                <span className="flex items-center gap-1 text-[10px] opacity-70">
-                                  Wiki entry <CornerDownLeft className="h-2.5 w-2.5" />
+                                <span className="flex items-center gap-1.5 text-[11px] opacity-80 text-emerald-500 shrink-0">
+                                  Wiki entry <CornerDownLeft className="h-3 w-3" />
                                 </span>
                               )}
                             </div>
@@ -230,10 +230,10 @@ const CommandPalette = () => {
                   {/* GitHub Radar category */}
                   {results.github_radar?.length > 0 && (
                     <div>
-                      <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase px-3 py-1 flex items-center gap-1.5">
-                        <Github className="h-3 w-3" /> GitHub Trending
+                      <div className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase px-3 py-1.5 flex items-center gap-1.5">
+                        <Github className="h-3.5 w-3.5" /> GitHub Trending
                       </div>
-                      <div className="mt-1 space-y-0.5">
+                      <div className="mt-1 space-y-1">
                         {results.github_radar.map((item) => {
                           const flatIdx = flatItems.findIndex(f => f.type === 'github' && f.url === item.repo_url);
                           const isSel = flatIdx === selectedIndex;
@@ -242,14 +242,14 @@ const CommandPalette = () => {
                               key={item.repo_url}
                               onClick={() => handleSelect(flatItems[flatIdx])}
                               onMouseEnter={() => setSelectedIndex(flatIdx)}
-                              className={`flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium cursor-pointer transition-colors ${
-                                isSel ? 'bg-primary/10 text-primary border border-primary/20' : 'text-zinc-400 hover:bg-zinc-900/50 border border-transparent'
+                              className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
+                                isSel ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-zinc-400 hover:bg-zinc-900 border border-transparent'
                               }`}
                             >
                               <span>{item.repo_name}</span>
                               {isSel && (
-                                <span className="flex items-center gap-1 text-[10px] opacity-70">
-                                  Open repo <ArrowRight className="h-2.5 w-2.5" />
+                                <span className="flex items-center gap-1.5 text-[11px] opacity-80 text-emerald-500 shrink-0">
+                                  Open repo <ArrowRight className="h-3 w-3" />
                                 </span>
                               )}
                             </div>
@@ -263,14 +263,14 @@ const CommandPalette = () => {
             </div>
 
             {/* Footer keyboard helpers */}
-            <div className="h-10 px-4 border-t border-zinc-800 bg-zinc-950 flex items-center justify-between text-[10px] text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <span>↑↓ Navigate</span>
-                <span>↵ Select</span>
-                <span>ESC Close</span>
+            <div className="h-12 px-5 border-t border-zinc-800 bg-zinc-950/50 flex items-center justify-between text-[11px] text-zinc-500 font-medium">
+              <div className="flex items-center gap-6">
+                <span className="flex items-center gap-1.5"><span className="bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">↑↓</span> Navigate</span>
+                <span className="flex items-center gap-1.5"><span className="bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">↵</span> Select</span>
+                <span className="flex items-center gap-1.5"><span className="bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">ESC</span> Close</span>
               </div>
-              <div>
-                <span>Unified Search</span>
+              <div className="text-zinc-600">
+                Unified Search
               </div>
             </div>
           </motion.div>

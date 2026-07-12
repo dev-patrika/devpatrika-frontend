@@ -18,4 +18,31 @@ export const useUIStore = create((set) => ({
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setSearchOpen: (open) => set({ searchOpen: open }),
+
+  // Custom Confirm Dialog State
+  confirmDialog: {
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+  },
+  
+  showConfirm: (title, message) => new Promise((resolve) => {
+    set({
+      confirmDialog: {
+        isOpen: true,
+        title,
+        message,
+        onConfirm: () => {
+          set((state) => ({ confirmDialog: { ...state.confirmDialog, isOpen: false } }));
+          resolve(true);
+        },
+        onCancel: () => {
+          set((state) => ({ confirmDialog: { ...state.confirmDialog, isOpen: false } }));
+          resolve(false);
+        }
+      }
+    });
+  }),
 }));

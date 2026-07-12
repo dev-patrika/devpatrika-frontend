@@ -5,6 +5,10 @@ import { Toaster } from 'react-hot-toast';
 
 import Layout from '@/components/layout/Layout';
 import LoadingPage from '@/components/layout/LoadingPage';
+import AuthModal from '@/components/auth/AuthModal';
+import AuthGuard from '@/components/auth/AuthGuard';
+import WelcomeBanner from '@/components/auth/WelcomeBanner';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 // Lazy-loaded page components for optimization & bundle splitting
 const Dashboard = lazy(() => import('@/pages/Dashboard/Dashboard'));
@@ -16,6 +20,7 @@ const AIChat = lazy(() => import('@/pages/Chat/AIChat'));
 const Settings = lazy(() => import('@/pages/Settings/Settings'));
 const NewsDetail = lazy(() => import('@/pages/News/NewsDetail'));
 const GitHubDetail = lazy(() => import('@/pages/GitHub/GitHubDetail'));
+const LoginSuccess = lazy(() => import('@/pages/Auth/LoginSuccess'));
 
 // Set up TanStack Query Client with V5 specifications
 const queryClient = new QueryClient({
@@ -42,18 +47,45 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        {/* Global Auth Modal — triggered from anywhere via authStore */}
+        <AuthModal />
+        {/* First-visit welcome banner — slides in from right */}
+        <WelcomeBanner />
+        {/* Global Confirm Modal for replacing native window.confirm */}
+        <ConfirmModal />
+        
         <Suspense fallback={<LoadingPage />}>
           <Routes>
             <Route path="/" element={<Layout />}>
+              {/* PUBLIC: Feed headlines are free to browse */}
               <Route index element={<Feed />} />
               <Route path="feed" element={<Navigate to="/" replace />} />
-              <Route path="news/:id" element={<NewsDetail />} />
               <Route path="github" element={<GitHubRadar />} />
-              <Route path="github/:id" element={<GitHubDetail />} />
               <Route path="wiki" element={<DevWiki />} />
               <Route path="reports" element={<WeeklyReports />} />
-              <Route path="chat" element={<Navigate to="/" replace />} />
-              <Route path="settings" element={<Settings />} />
+              <Route path="login/success" element={<LoginSuccess />} />
+              
+              {/* PROTECTED: Reading full articles requires sign-in */}
+              <Route path="news/:id" element={
+                <AuthGuard>
+                  <NewsDetail />
+                </AuthGuard>
+              } />
+              <Route path="github/:id" element={
+                <AuthGuard>
+                  <GitHubDetail />
+                </AuthGuard>
+              } />
+              <Route path="chat" element={
+                <AuthGuard>
+                  <AIChat />
+                </AuthGuard>
+              } />
+              <Route path="settings" element={
+                <AuthGuard>
+                  <Settings />
+                </AuthGuard>
+              } />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
@@ -91,3 +123,4 @@ function App() {
 }
 
 export default App;
+
