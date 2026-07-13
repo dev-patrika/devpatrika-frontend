@@ -1,8 +1,16 @@
 import { create } from 'zustand';
 
 export const useAuthStore = create((set) => ({
-  user: null,
-  isAuthenticated: false,
+  user: (() => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      console.error('Failed to parse user from localStorage', e);
+      return null;
+    }
+  })(),
+  isAuthenticated: !!localStorage.getItem('access_token'),
   token: localStorage.getItem('access_token') || null,
   authModalOpen: false,
 
@@ -12,16 +20,26 @@ export const useAuthStore = create((set) => ({
       set({ token, isAuthenticated: true });
     } else {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
       set({ token: null, isAuthenticated: false, user: null });
     }
   },
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setUser: (user) => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      set({ user, isAuthenticated: true });
+    } else {
+      localStorage.removeItem('user');
+      set({ user: null });
+    }
+  },
 
   setAuthModalOpen: (isOpen) => set({ authModalOpen: isOpen }),
 
   logout: () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
     set({ user: null, token: null, isAuthenticated: false });
   },
 }));
