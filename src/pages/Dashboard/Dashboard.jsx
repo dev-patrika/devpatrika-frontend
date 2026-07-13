@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/store/chatStore';
+import { useUIStore } from '@/store/uiStore';
 import { chatService } from '@/services/chatService';
 import { newsService } from '@/services/newsService';
 import { githubService } from '@/services/githubService';
@@ -62,6 +63,8 @@ const Dashboard = () => {
     deleteSession,
     clearHistory
   } = useChatStore();
+
+  const { showConfirm } = useUIStore();
 
   const [inputMessage, setInputMessage] = useState('');
   const [hoveredCitation, setHoveredCitation] = useState(null);
@@ -606,8 +609,12 @@ const Dashboard = () => {
                                 <Edit2 className="h-3 w-3" />
                               </button>
                               <button
-                                onClick={() => {
-                                  if (window.confirm('Delete this conversation thread?')) {
+                                onClick={async () => {
+                                  const confirmed = await showConfirm(
+                                    'Delete Conversation?',
+                                    'Are you sure you want to delete this conversation thread?'
+                                  );
+                                  if (confirmed) {
                                     deleteSession(s.id);
                                     toast.success('Session deleted.');
                                   }
@@ -628,8 +635,12 @@ const Dashboard = () => {
                 {sessions.length > 0 && (
                   <div className="p-3 border-t border-border bg-muted/20">
                     <button
-                      onClick={() => {
-                        if (window.confirm('Clear all conversation histories?')) {
+                      onClick={async () => {
+                        const confirmed = await showConfirm(
+                          'Clear All History?',
+                          'Are you sure you want to delete all persistent chat conversations and sessions?'
+                        );
+                        if (confirmed) {
                           clearHistory();
                           setHasStartedChatting(false);
                           toast.success('Cleared all histories.');

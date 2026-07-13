@@ -460,7 +460,16 @@ const FloatingChat = () => {
                                 <Edit2 className="h-3 w-3" />
                               </button>
                               <button
-                                onClick={() => { if (window.confirm('Delete?')) { deleteSession(s.id); toast.success('Deleted.'); } }}
+                                onClick={async () => {
+                                  const confirmed = await showConfirm(
+                                    'Delete Conversation?',
+                                    'Are you sure you want to delete this conversation thread?'
+                                  );
+                                  if (confirmed) {
+                                    deleteSession(s.id);
+                                    toast.success('Deleted.');
+                                  }
+                                }}
                                 className="p-1 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 cursor-pointer transition-colors"
                                 title="Delete"
                               >
@@ -476,7 +485,16 @@ const FloatingChat = () => {
                 {sessions.length > 0 && (
                   <div className="p-3 border-t border-border">
                     <button
-                      onClick={() => { if (window.confirm('Clear all history?')) { clearHistory(); toast.success('Cleared.'); } }}
+                      onClick={async () => {
+                        const confirmed = await showConfirm(
+                          'Clear All History?',
+                          'Are you sure you want to delete all persistent chat conversations and sessions?'
+                        );
+                        if (confirmed) {
+                          clearHistory();
+                          toast.success('Cleared.');
+                        }
+                      }}
                       className="w-full h-7 border border-border hover:bg-destructive/8 text-muted-foreground hover:text-destructive rounded-xl text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" /> Clear All
