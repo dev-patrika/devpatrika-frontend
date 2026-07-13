@@ -16,7 +16,7 @@ const ConfirmModal = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm"
             onClick={onCancel}
           />
           
@@ -26,34 +26,35 @@ const ConfirmModal = () => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-[#09090b] border border-zinc-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl pointer-events-auto"
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-card border border-border rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl pointer-events-auto"
             >
               <div className="p-6">
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 ring-1 ring-rose-500/20">
-                    <AlertTriangle className="w-6 h-6 text-rose-500" />
+                  <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 ring-1 ring-red-500/20">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
                   </div>
                   
-                  <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  <h3 className="text-base font-bold text-foreground mb-1.5 font-sans">
                     {title || 'Are you sure?'}
                   </h3>
                   
-                  <p className="text-sm text-zinc-400 mb-6">
+                  <p className="text-xs text-muted-foreground mb-6 leading-relaxed font-sans">
                     {message}
                   </p>
                   
                   <div className="flex gap-3 w-full">
                     <button
                       onClick={onCancel}
-                      className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 py-2.5 rounded-xl font-medium transition-colors"
+                      className="flex-1 bg-muted hover:bg-muted/80 text-foreground border border-border py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer active:scale-[0.98]"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={onConfirm}
-                      className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-rose-900/20"
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-lg shadow-red-500/15 cursor-pointer active:scale-[0.98]"
                     >
-                      Confirm
+                      Yes, Clear
                     </button>
                   </div>
                 </div>
