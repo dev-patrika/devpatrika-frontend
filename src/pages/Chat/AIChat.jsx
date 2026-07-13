@@ -196,10 +196,10 @@ const AIChat = () => {
 
   const renderInlineFormatting = (text) => {
     if (!text) return '';
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g);
     return parts.map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+        return <strong key={idx} className="font-extrabold text-foreground">{part.slice(2, -2)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         return <em key={idx} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
@@ -207,8 +207,181 @@ const AIChat = () => {
       if (part.startsWith('`') && part.endsWith('`')) {
         return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-primary font-mono">{part.slice(1, -1)}</code>;
       }
+      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+        const match = part.match(/\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const [_, linkText, linkUrl] = match;
+          return (
+            <a
+              key={idx}
+              href={linkUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold cursor-pointer"
+            >
+              {linkText}
+            </a>
+          );
+        }
+      }
       return <span key={idx}>{part}</span>;
     });
+  };
+
+  const parseChatTable = (tableLines, tableKey) => {
+    if (tableLines.length < 2) return null;
+    
+    const rows = tableLines.map(line => {
+      return line.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+    });
+
+    const isSeparator = rows[1]?.every(cell => /^:-*-:?$|^-+$/.test(cell));
+    if (!isSeparator) return null;
+
+    const headers = rows[0];
+    const bodyRows = rows.slice(2);
+
+    return (
+      <div key={tableKey} className="overflow-x-auto my-3 rounded-xl border border-border bg-muted/20">
+        <table className="w-full border-collapse text-left text-[10px] font-sans">
+          <thead>
+            <tr className="bg-muted/80 border-b border-border">
+              {headers.map((h, i) => (
+                <th key={i} className="p-2 font-extrabold text-foreground uppercase tracking-wider text-[8.5px]">
+                  {renderInlineFormatting(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {bodyRows.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-muted/10 transition-colors">
+                {row.map((cell, cIdx) => (
+                  <td key={cIdx} className="p-2 text-foreground/80 leading-normal align-top">
+                    {renderInlineFormatting(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderChatTextBlock = (text, blockKey, citations = []) => {
+    const lines = text.split('\n');
+    const elements = [];
+    let currentTableLines = [];
+
+    const parseCitations = (content) => {
+      const subparts = content.split(/(\[\d+\])/g);
+      return subparts.map((sub, sIdx) => {
+        const citeMatch = sub.match(/^\[(\d+)\]$/);
+        if (citeMatch) {
+          const citeNum = parseInt(citeMatch[1], 10);
+          const source = citations.find(c => c.id === citeNum) || 
+                         citations.find(c => c.number === citeNum) ||
+                         citations[citeNum - 1];
+          
+          if (source) {
+            return (
+              <span
+                key={sIdx}
+                onMouseEnter={() => setHoveredCitation(source)}
+                onMouseLeave={() => setHoveredCitation(null)}
+                className="inline-flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded px-1 py-0.5 mx-0.5 text-[9px] font-bold font-mono align-super cursor-pointer select-none transition-colors"
+              >
+                [{citeNum}]
+              </span>
+            );
+          }
+        }
+        return renderInlineFormatting(sub);
+      });
+    };
+
+    const flushTable = () => {
+      if (currentTableLines.length > 0) {
+        const tableKey = `${blockKey}-table-${elements.length}`;
+        const tableElement = parseChatTable(currentTableLines, tableKey);
+        if (tableElement) {
+          elements.push(tableElement);
+        } else {
+          currentTableLines.forEach((tLine, tIdx) => {
+            elements.push(
+              <p key={`${blockKey}-tb-${elements.length}-${tIdx}`} className="my-1.5 leading-relaxed">
+                {renderInlineFormatting(tLine)}
+              </p>
+            );
+          });
+        }
+        currentTableLines = [];
+      }
+    };
+
+    lines.forEach((line, lineIdx) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith('|')) {
+        currentTableLines.push(line);
+      } else {
+        flushTable();
+
+        if (!trimmed || trimmed === '---' || trimmed === '...') return;
+
+        if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+          const content = trimmed.replace(/^[*-]\s*/, '');
+          elements.push(
+            <li key={lineIdx} className="ml-4 list-disc pl-1 marker:text-primary">
+              {parseCitations(content)}
+            </li>
+          );
+        } else if (trimmed.startsWith('###')) {
+          elements.push(
+            <h4 key={lineIdx} className="text-primary font-bold text-xs mt-3 uppercase tracking-wider font-mono">
+              {parseCitations(trimmed.replace(/^###\s*/, ''))}
+            </h4>
+          );
+        } else if (trimmed.startsWith('##')) {
+          elements.push(
+            <h3 key={lineIdx} className="text-foreground font-bold text-sm mt-4 uppercase border-b border-border pb-1">
+              {parseCitations(trimmed.replace(/^##\s*/, ''))}
+            </h3>
+          );
+        } else if (trimmed.startsWith('**') && trimmed.includes(':**')) {
+          const parts = trimmed.split(/:\*\*\s*(.*)/s);
+          if (parts.length >= 2) {
+            const label = parts[0].replace(/^\*\*|\*\*$/g, '');
+            const val = parts[1];
+            elements.push(
+              <div key={lineIdx} className="mt-3 first:mt-0 space-y-1">
+                <span className="inline-block font-mono text-[8.5px] font-bold text-primary bg-primary/5 px-2 py-0.5 border border-primary/20 rounded-md uppercase tracking-wider">
+                  {label}
+                </span>
+                <p className="text-xs text-foreground/80 leading-relaxed pl-0.5">
+                  {parseCitations(val)}
+                </p>
+              </div>
+            );
+          }
+        } else {
+          elements.push(
+            <p key={lineIdx} className="my-1.5 leading-relaxed">
+              {parseCitations(trimmed)}
+            </p>
+          );
+        }
+      }
+    });
+
+    flushTable();
+
+    return (
+      <div key={blockKey} className="space-y-2 text-xs leading-relaxed text-foreground/80 font-sans text-justify">
+        {elements}
+      </div>
+    );
   };
 
   // Custom parser to split by code blocks and render them in copy cards
@@ -242,91 +415,7 @@ const AIChat = () => {
               </div>
             );
           } else {
-            // Split block by newlines to render subheadings, bold labels, list items, and paragraph breaks cleanly
-            const lines = part.split('\n');
-            return (
-              <div key={idx} className="space-y-2 text-xs leading-relaxed text-foreground/80 font-sans text-justify">
-                {lines.map((line, lIdx) => {
-                  const trimmed = line.trim();
-                  if (!trimmed || trimmed === '---' || trimmed === '...') return null;
-
-                  const parseCitations = (content) => {
-                    const subparts = content.split(/(\[\d+\])/g);
-                    return subparts.map((sub, sIdx) => {
-                      const citeMatch = sub.match(/^\[(\d+)\]$/);
-                      if (citeMatch) {
-                        const citeNum = parseInt(citeMatch[1], 10);
-                        const source = citations.find(c => c.id === citeNum) || 
-                                       citations.find(c => c.number === citeNum) ||
-                                       citations[citeNum - 1];
-                        
-                        if (source) {
-                          return (
-                            <span
-                              key={sIdx}
-                              onMouseEnter={() => setHoveredCitation(source)}
-                              onMouseLeave={() => setHoveredCitation(null)}
-                              className="inline-flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded px-1 py-0.5 mx-0.5 text-[9px] font-bold font-mono align-super cursor-pointer select-none transition-colors"
-                            >
-                              [{citeNum}]
-                            </span>
-                          );
-                        }
-                      }
-                      return renderInlineFormatting(sub);
-                    });
-                  };
-
-                  if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
-                    const content = trimmed.replace(/^[*-]\s*/, '');
-                    return (
-                      <li key={lIdx} className="ml-4 list-disc pl-1 marker:text-primary">
-                        {parseCitations(content)}
-                      </li>
-                    );
-                  }
-
-                  if (trimmed.startsWith('###')) {
-                    return (
-                      <h4 key={lIdx} className="text-primary font-bold text-xs mt-3 uppercase tracking-wider font-mono">
-                        {parseCitations(trimmed.replace(/^###\s*/, ''))}
-                      </h4>
-                    );
-                  }
-                  if (trimmed.startsWith('##')) {
-                    return (
-                      <h3 key={lIdx} className="text-foreground font-bold text-sm mt-4 uppercase border-b border-border pb-1">
-                        {parseCitations(trimmed.replace(/^##\s*/, ''))}
-                      </h3>
-                    );
-                  }
-
-                  if (trimmed.startsWith('**') && trimmed.includes(':**')) {
-                    const parts = trimmed.split(/:\*\*\s*(.*)/s);
-                    if (parts.length >= 2) {
-                      const label = parts[0].replace(/^\*\*|\*\*$/g, '');
-                      const val = parts[1];
-                      return (
-                        <div key={lIdx} className="mt-3 first:mt-0 space-y-1">
-                          <span className="inline-block font-mono text-[8.5px] font-bold text-primary bg-primary/5 px-2 py-0.5 border border-primary/20 rounded-md uppercase tracking-wider">
-                            {label}
-                          </span>
-                          <p className="text-xs text-foreground/80 leading-relaxed pl-0.5">
-                            {parseCitations(val)}
-                          </p>
-                        </div>
-                      );
-                    }
-                  }
-
-                  return (
-                    <p key={lIdx} className="my-1.5 leading-relaxed">
-                      {parseCitations(trimmed)}
-                    </p>
-                  );
-                })}
-              </div>
-            );
+            return renderChatTextBlock(part, idx, citations);
           }
         })}
       </div>

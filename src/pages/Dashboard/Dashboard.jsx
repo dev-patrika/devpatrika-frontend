@@ -270,12 +270,12 @@ const Dashboard = () => {
   // Custom parser to split by markdown blocks and render them beautifully
   const renderInlineFormatting = (text, citations = [], showCursor = false) => {
     if (!text) return '';
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[\d+\])/g);
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[\d+\]|\[.*?\]\(.*?\))/g);
     return parts.map((part, idx) => {
       const isLastPart = idx === parts.length - 1;
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
-          <strong key={idx} className="font-bold text-foreground">
+          <strong key={idx} className="font-extrabold text-foreground">
             {part.slice(2, -2)}
             {isLastPart && showCursor && (
               <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse rounded-sm align-middle" />
@@ -302,6 +302,27 @@ const Dashboard = () => {
             )}
           </code>
         );
+      }
+      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+        const match = part.match(/\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const [_, linkText, linkUrl] = match;
+          return (
+            <span key={idx}>
+              <a
+                href={linkUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold cursor-pointer"
+              >
+                {linkText}
+              </a>
+              {isLastPart && showCursor && (
+                <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse rounded-sm align-middle" />
+              )}
+            </span>
+          );
+        }
       }
       const citeMatch = part.match(/^\[(\d+)\]$/);
       if (citeMatch) {

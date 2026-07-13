@@ -21,6 +21,36 @@ import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
+const parseNewsSummary = (summary) => {
+  if (!summary) return { overview: 'No summary details compiled.', skills: '' };
+  
+  let overview = '';
+  const overviewMatch = summary.match(/\*\*Overview\*\*([\s\S]*?)(?=\*\*Skills to Learn\*\*|\[Read Full Article\]|$)/i);
+  if (overviewMatch) {
+    overview = overviewMatch[1].trim();
+  } else {
+    overview = summary.replace(/\*\*Overview\*\*/gi, '').trim();
+  }
+  
+  let skills = '';
+  const skillsMatch = summary.match(/\*\*Skills to Learn\*\*([\s\S]*?)(?=\[Read Full Article\]|$)/i);
+  if (skillsMatch) {
+    skills = skillsMatch[1].trim();
+  }
+  
+  const cleanText = (txt) => {
+    return txt
+      .replace(/^[#*-\s]+/g, '')
+      .replace(/[#*-\s]+$/g, '')
+      .trim();
+  };
+
+  return {
+    overview: cleanText(overview) || 'No summary details compiled.',
+    skills: cleanText(skills)
+  };
+};
+
 const Feed = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -229,6 +259,7 @@ const Feed = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {displayedNews.map((item) => {
             const isBookmarked = bookmarks.some(b => b.id === item.id);
+            const { overview, skills } = parseNewsSummary(item.summary);
             return (
               <Card
                 key={item.id}
@@ -251,10 +282,20 @@ const Feed = () => {
                     {item.title}
                   </h2>
                   
-                  {/* Summary */}
+                  {/* Summary Overview */}
                   <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-sans">
-                    {item.summary ? item.summary.replace(/^[#*-\s]+/mg, '').slice(0, 140) : item.raw_content ? item.raw_content.slice(0, 140) : 'No summary details compiled.'}
+                    {overview}
                   </p>
+
+                  {/* Skills to Learn Box */}
+                  {skills && (
+                    <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
+                      <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Skills to Learn</span>
+                      <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                        {skills}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Footer details & actions */}

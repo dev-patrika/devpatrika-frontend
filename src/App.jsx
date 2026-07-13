@@ -23,6 +23,7 @@ const Settings = lazy(() => import('@/pages/Settings/Settings'));
 const NewsDetail = lazy(() => import('@/pages/News/NewsDetail'));
 const GitHubDetail = lazy(() => import('@/pages/GitHub/GitHubDetail'));
 const LoginSuccess = lazy(() => import('@/pages/Auth/LoginSuccess'));
+const Contact = lazy(() => import('@/pages/Contact/Contact'));
 
 // Set up TanStack Query Client with V5 specifications
 const queryClient = new QueryClient({
@@ -81,6 +82,7 @@ function App() {
               <Route path="github" element={<GitHubRadar />} />
               <Route path="wiki" element={<DevWiki />} />
               <Route path="reports" element={<WeeklyReports />} />
+              <Route path="contact" element={<Contact />} />
               <Route path="login/success" element={<LoginSuccess />} />
               
               {/* PROTECTED: Reading full articles requires sign-in */}

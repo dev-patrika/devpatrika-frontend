@@ -68,16 +68,33 @@ const WeeklyReports = () => {
 
   const renderInlineFormatting = (text) => {
     if (!text) return '';
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g);
     return parts.map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+        return <strong key={idx} className="font-extrabold text-foreground">{part.slice(2, -2)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         return <em key={idx} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
       }
       if (part.startsWith('`') && part.endsWith('`')) {
         return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[11px] text-primary font-mono">{part.slice(1, -1)}</code>;
+      }
+      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+        const match = part.match(/\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const [_, linkText, linkUrl] = match;
+          return (
+            <a
+              key={idx}
+              href={linkUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold cursor-pointer"
+            >
+              {linkText}
+            </a>
+          );
+        }
       }
       return <span key={idx}>{part}</span>;
     });
@@ -148,7 +165,7 @@ const WeeklyReports = () => {
         } else {
           currentTableLines.forEach((tLine) => {
             elements.push(
-              <p key={`fb-${elements.length}`} className="my-2.5 font-serif text-sm leading-relaxed text-foreground/90 text-justify justified-text">
+              <p key={`fb-${elements.length}`} className="my-2.5 font-['Times_New_Roman',_Times,_serif] text-sm leading-relaxed text-foreground/90 text-justify justified-text">
                 {renderInlineFormatting(tLine)}
               </p>
             );
@@ -193,7 +210,7 @@ const WeeklyReports = () => {
         else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
           const listText = trimmed.replace(/^[*-]\s+/, '');
           elements.push(
-            <li key={`li-${lineIdx}`} className="ml-5 list-disc pl-1 text-xs text-foreground/90 font-serif leading-relaxed my-1.5 marker:text-primary">
+            <li key={`li-${lineIdx}`} className="ml-5 list-disc pl-1 text-xs text-foreground/90 font-['Times_New_Roman',_Times,_serif] leading-relaxed my-1.5 marker:text-primary">
               {renderInlineFormatting(listText)}
             </li>
           );
@@ -202,14 +219,14 @@ const WeeklyReports = () => {
           const formattedText = renderInlineFormatting(line);
           if (isFirstParagraph) {
             elements.push(
-              <p key={`p-${lineIdx}`} className="drop-cap font-serif text-sm leading-relaxed text-foreground/95 text-justify justified-text mb-3">
+              <p key={`p-${lineIdx}`} className="drop-cap font-['Times_New_Roman',_Times,_serif] text-sm leading-relaxed text-foreground/95 text-justify justified-text mb-3">
                 {formattedText}
               </p>
             );
             isFirstParagraph = false;
           } else {
             elements.push(
-              <p key={`p-${lineIdx}`} className="font-serif text-sm leading-relaxed text-foreground/90 text-justify justified-text mb-3">
+              <p key={`p-${lineIdx}`} className="font-['Times_New_Roman',_Times,_serif] text-sm leading-relaxed text-foreground/90 text-justify justified-text mb-3">
                 {formattedText}
               </p>
             );
@@ -239,7 +256,8 @@ const WeeklyReports = () => {
             </h3>
             <button 
               onClick={() => setShowArchive(false)}
-              className="lg:hidden text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+              title="Hide Archive"
             >
               <X className="h-4 w-4" />
             </button>
@@ -329,17 +347,11 @@ const WeeklyReports = () => {
                   
                   {/* Actions shortcut in header */}
                   <div className="flex items-center gap-3 text-primary print:hidden font-sans text-[10px] font-bold">
-                    <button 
-                      onClick={() => setShowArchive(!showArchive)} 
-                      className="text-primary hover:text-primary-container font-sans text-[10px] font-extrabold uppercase bg-primary/10 border border-primary/25 rounded-full px-3 py-1 shadow-sm transition-all mr-2 hover:scale-102 flex items-center gap-1 select-none"
-                    >
-                      <Columns className="h-3.5 w-3.5 shrink-0" />
-                      {showArchive ? 'Hide Archive' : 'Show Archive'}
-                    </button>
+                    <button onClick={() => handleCopy(reportDetails || selectedReport)} className="hover:underline cursor-pointer">Copy</button>
                     <span className="text-border">|</span>
-                    <button onClick={() => handleCopy(reportDetails || selectedReport)} className="hover:underline">Copy</button>
-                    <button onClick={handlePrint} className="hover:underline">Print</button>
-                    <button onClick={() => handleDownload(reportDetails || selectedReport)} className="hover:underline">Download</button>
+                    <button onClick={handlePrint} className="hover:underline cursor-pointer">Print</button>
+                    <span className="text-border">|</span>
+                    <button onClick={() => handleDownload(reportDetails || selectedReport)} className="hover:underline cursor-pointer">Download</button>
                   </div>
                 </div>
               </header>

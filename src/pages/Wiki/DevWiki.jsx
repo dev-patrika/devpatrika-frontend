@@ -188,10 +188,10 @@ const DevWiki = () => {
 
   const renderInlineFormatting = (text) => {
     if (!text) return '';
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g);
     return parts.map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+        return <strong key={idx} className="font-extrabold text-foreground">{part.slice(2, -2)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         return <em key={idx} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
@@ -199,8 +199,66 @@ const DevWiki = () => {
       if (part.startsWith('`') && part.endsWith('`')) {
         return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-primary font-mono">{part.slice(1, -1)}</code>;
       }
+      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+        const match = part.match(/\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const [_, linkText, linkUrl] = match;
+          return (
+            <a
+              key={idx}
+              href={linkUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold cursor-pointer"
+            >
+              {linkText}
+            </a>
+          );
+        }
+      }
       return <span key={idx}>{part}</span>;
     });
+  };
+
+  const parseChatTable = (tableLines, tableKey) => {
+    if (tableLines.length < 2) return null;
+    
+    const rows = tableLines.map(line => {
+      return line.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+    });
+
+    const isSeparator = rows[1]?.every(cell => /^:-*-:?$|^-+$/.test(cell));
+    if (!isSeparator) return null;
+
+    const headers = rows[0];
+    const bodyRows = rows.slice(2);
+
+    return (
+      <div key={tableKey} className="overflow-x-auto my-3 rounded-xl border border-border bg-muted/20">
+        <table className="w-full border-collapse text-left text-[10px] font-sans">
+          <thead>
+            <tr className="bg-muted/80 border-b border-border">
+              {headers.map((h, i) => (
+                <th key={i} className="p-2 font-extrabold text-foreground uppercase tracking-wider text-[8.5px]">
+                  {renderInlineFormatting(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {bodyRows.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-muted/10 transition-colors">
+                {row.map((cell, cIdx) => (
+                  <td key={cIdx} className="p-2 text-muted-foreground leading-normal align-top">
+                    {renderInlineFormatting(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   const parseTimelineMarkdown = (markdown) => {
@@ -247,61 +305,104 @@ const DevWiki = () => {
   const formatTimelineDetails = (detailsText) => {
     if (!detailsText) return null;
     
-    const rawLines = detailsText.split('\n');
-    const lines = [];
-    
-    rawLines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed === '---' || trimmed === '...') return;
-      
-      if (trimmed.includes('**') && trimmed.includes(':**')) {
-        const segments = trimmed.split(/(?=\*\*[^*]+:\*\*)/g);
-        segments.forEach((seg) => {
-          const segTrimmed = seg.trim();
-          if (segTrimmed && segTrimmed !== '---' && segTrimmed !== '...') {
-            lines.push(segTrimmed);
-          }
-        });
-      } else {
-        lines.push(trimmed);
-      }
-    });
+    const parts = detailsText.split(/(```[\s\S]*?```)/g);
 
     return (
       <div className="space-y-3 mt-2 text-[11px] leading-relaxed text-muted-foreground font-sans">
-        {lines.map((line, idx) => {
-          if (line.startsWith('*') || line.startsWith('-')) {
-            const content = line.replace(/^[*-]\s*/, '');
+        {parts.map((part, idx) => {
+          if (part.startsWith('```') && part.endsWith('```')) {
+            const match = part.match(/```(\w*)\n([\s\S]*?)```/);
+            const lang = match ? match[1] : 'code';
+            const code = match ? match[2] : part.slice(3, -3);
             return (
-              <li key={idx} className="ml-3 list-disc pl-0.5 marker:text-primary/70">
-                {renderInlineFormatting(content)}
-              </li>
-            );
-          }
-          
-          if (line.startsWith('**') && line.includes(':**')) {
-            const parts = line.split(/:\*\*\s*(.*)/s);
-            if (parts.length >= 2) {
-              const label = parts[0].replace(/^\*\*|\*\*$/g, '');
-              const val = parts[1];
-              return (
-                <div key={idx} className="mt-3 first:mt-0 space-y-1">
-                  <span className="inline-block font-mono text-[8.5px] font-bold text-primary bg-primary/5 px-2 py-0.5 border border-primary/20 rounded-md uppercase tracking-wider">
-                    {label}
-                  </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed pl-0.5">
-                    {renderInlineFormatting(val)}
-                  </p>
+              <div key={idx} className="border border-border rounded-xl overflow-hidden bg-muted/30 font-mono text-[9px] my-2 shadow-sm">
+                <div className="flex items-center justify-between px-3 py-1 bg-muted/50 border-b border-border text-[8px] text-muted-foreground uppercase font-bold tracking-wider">
+                  <span>{lang || 'code'}</span>
                 </div>
-              );
-            }
+                <pre className="p-2.5 overflow-x-auto text-foreground select-all leading-relaxed whitespace-pre-wrap">{code}</pre>
+              </div>
+            );
+          } else {
+            const lines = part.split('\n');
+            const elements = [];
+            let currentTableLines = [];
+
+            const flushTable = () => {
+              if (currentTableLines.length > 0) {
+                const tableKey = `table-${idx}-${elements.length}`;
+                const tableElement = parseChatTable(currentTableLines, tableKey);
+                if (tableElement) {
+                  elements.push(tableElement);
+                } else {
+                  currentTableLines.forEach((tLine, tlIdx) => {
+                    elements.push(
+                      <p key={`fb-${idx}-${elements.length}-${tlIdx}`} className="my-1 leading-relaxed">
+                        {renderInlineFormatting(tLine)}
+                      </p>
+                    );
+                  });
+                }
+                currentTableLines = [];
+              }
+            };
+
+            lines.forEach((line, lineIdx) => {
+              const trimmed = line.trim();
+              if (trimmed.startsWith('|')) {
+                currentTableLines.push(line);
+              } else {
+                flushTable();
+                if (!trimmed || trimmed === '---' || trimmed === '...') return;
+
+                if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+                  const content = trimmed.replace(/^[*-]\s*/, '');
+                  elements.push(
+                    <li key={`li-${lineIdx}`} className="ml-3 list-disc pl-0.5 marker:text-primary/70">
+                      {renderInlineFormatting(content)}
+                    </li>
+                  );
+                } else if (trimmed.startsWith('###')) {
+                  elements.push(
+                    <h4 key={`h4-${lineIdx}`} className="text-primary font-bold text-[10px] mt-3 uppercase tracking-wider font-mono">
+                      {renderInlineFormatting(trimmed.replace(/^###\s*/, ''))}
+                    </h4>
+                  );
+                } else if (trimmed.startsWith('##')) {
+                  elements.push(
+                    <h3 key={`h3-${lineIdx}`} className="text-foreground font-bold text-xs mt-4 uppercase border-b border-border pb-1">
+                      {renderInlineFormatting(trimmed.replace(/^##\s*/, ''))}
+                    </h3>
+                  );
+                } else if (trimmed.startsWith('**') && trimmed.includes(':**')) {
+                  const parts = trimmed.split(/:\*\*\s*(.*)/s);
+                  if (parts.length >= 2) {
+                    const label = parts[0].replace(/^\*\*|\*\*$/g, '');
+                    const val = parts[1];
+                    elements.push(
+                      <div key={`lbl-${lineIdx}`} className="mt-3 first:mt-0 space-y-1">
+                        <span className="inline-block font-mono text-[8.5px] font-bold text-primary bg-primary/5 px-2 py-0.5 border border-primary/20 rounded-md uppercase tracking-wider">
+                          {label}
+                        </span>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed pl-0.5">
+                          {renderInlineFormatting(val)}
+                        </p>
+                      </div>
+                    );
+                  }
+                } else {
+                  elements.push(
+                    <p key={`p-${lineIdx}`} className="my-1 leading-relaxed">
+                      {renderInlineFormatting(trimmed)}
+                    </p>
+                  );
+                }
+              }
+            });
+
+            flushTable();
+
+            return <div key={idx} className="space-y-1.5">{elements}</div>;
           }
-          
-          return (
-            <p key={idx} className="my-1 leading-relaxed">
-              {renderInlineFormatting(line)}
-            </p>
-          );
         })}
       </div>
     );

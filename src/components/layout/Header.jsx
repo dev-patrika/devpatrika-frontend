@@ -15,6 +15,7 @@ const Header = () => {
     { name: 'GitHub Radar', path: '/github' },
     { name: 'Dev Wiki', path: '/wiki' },
     { name: 'Dev Patrika Weekly', path: '/reports' },
+    { name: 'Contact Us', path: '/contact' },
     { name: 'Settings', path: '/settings' },
   ];
 
