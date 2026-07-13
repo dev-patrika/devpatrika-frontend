@@ -9,6 +9,8 @@ import AuthModal from '@/components/auth/AuthModal';
 import AuthGuard from '@/components/auth/AuthGuard';
 import WelcomeBanner from '@/components/auth/WelcomeBanner';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/services/api';
 
 // Lazy-loaded page components for optimization & bundle splitting
 const Dashboard = lazy(() => import('@/pages/Dashboard/Dashboard'));
@@ -35,6 +37,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const { token, setUser } = useAuthStore();
+
   React.useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if (savedTheme === 'dark') {
@@ -43,6 +47,20 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, []);
+
+  React.useEffect(() => {
+    const initializeAuth = async () => {
+      if (token) {
+        try {
+          const res = await api.get('/auth/me');
+          setUser(res.data);
+        } catch (err) {
+          console.error('Session validation failed on startup:', err);
+        }
+      }
+    };
+    initializeAuth();
+  }, [token, setUser]);
 
   return (
     <QueryClientProvider client={queryClient}>
