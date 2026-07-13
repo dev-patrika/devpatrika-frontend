@@ -14,7 +14,8 @@ import {
   Terminal,
   Activity,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Mail
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { healthService } from '@/services/healthService';
@@ -38,6 +39,7 @@ const Sidebar = () => {
     { name: 'GitHub Radar', path: '/github', icon: Github },
     { name: 'Dev Wiki', path: '/wiki', icon: BookOpen },
     { name: 'Dev Patrika Weekly', path: '/reports', icon: FileText },
+    { name: 'Contact Us', path: '/contact', icon: Mail },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 

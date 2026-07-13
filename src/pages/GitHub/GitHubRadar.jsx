@@ -210,7 +210,11 @@ const GitHubRadar = () => {
                     <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in">
                       <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Why it matters</span>
                       <p className="line-clamp-2 text-zinc-650 font-sans leading-snug">
-                        {repo.why_it_matters_summary.replace(/^(Why it matters:?\s*|###\s*Why it matters:?\s*)/i, '')}
+                        {repo.why_it_matters_summary
+                          .replace(/^(Why it matters:?\s*|###\s*Why it matters:?\s*)/i, '')
+                          .replace(/^(\*\*Overview\*\*|["']Overview["']:?\s*)/i, '')
+                          .replace(/^[#*-\s]+/g, '')
+                          .trim()}
                       </p>
                     </div>
                   )}

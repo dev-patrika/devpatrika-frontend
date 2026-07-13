@@ -73,16 +73,33 @@ const NewsDetail = () => {
 
   const renderInlineFormatting = (text) => {
     if (!text) return '';
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g);
     return parts.map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+        return <strong key={idx} className="font-extrabold text-foreground">{part.slice(2, -2)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         return <em key={idx} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
       }
       if (part.startsWith('`') && part.endsWith('`')) {
         return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-primary font-mono">{part.slice(1, -1)}</code>;
+      }
+      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+        const match = part.match(/\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const [_, linkText, linkUrl] = match;
+          return (
+            <a
+              key={idx}
+              href={linkUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold cursor-pointer"
+            >
+              {linkText}
+            </a>
+          );
+        }
       }
       return <span key={idx}>{part}</span>;
     });
@@ -91,6 +108,16 @@ const NewsDetail = () => {
   // Format summary markdown
   const formatSummary = (summaryText) => {
     if (!summaryText) return 'No AI summary generated yet. Run the AI pipeline to analyze.';
+    
+    // Check if summary has no content (only headers are present)
+    const cleaned = summaryText.replace(/\*\*(Overview|Key Details|Community & Traction|Skills to Learn)\*\*/gi, '').replace(/\s+/g, '');
+    if (cleaned.length === 0) {
+      return (
+        <p className="text-xs text-muted-foreground italic text-center py-6 select-none">
+          No detailed AI analysis has been compiled for this article yet. Run the AI curation pipeline to analyze.
+        </p>
+      );
+    }
     
     const lines = summaryText.split('\n');
     return (
