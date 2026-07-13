@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/store/chatStore';
+import { useUIStore } from '@/store/uiStore';
 import { chatService } from '@/services/chatService';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -41,6 +42,8 @@ const AIChat = () => {
     clearHistory,
     renameSession
   } = useChatStore();
+
+  const { showConfirm } = useUIStore();
 
   const [inputMessage, setInputMessage] = useState('');
   const [hoveredCitation, setHoveredCitation] = useState(null);
@@ -158,8 +161,12 @@ const AIChat = () => {
   };
 
   // Clear current thread messages locally
-  const handleClearThread = () => {
-    if (window.confirm('Clear all messages in the active conversation?')) {
+  const handleClearThread = async () => {
+    const confirmed = await showConfirm(
+      'Clear Thread?',
+      'Are you sure you want to clear all messages in this conversation?'
+    );
+    if (confirmed) {
       const updatedHistories = {
         ...chatHistories,
         [activeSessionId]: []
