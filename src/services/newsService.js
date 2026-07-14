@@ -1,9 +1,10 @@
 import api from './api';
 
 export const newsService = {
-  getNews: async ({ category, q, limit = 20 } = {}) => {
+  getNews: async ({ category, source, q, limit = 20 } = {}) => {
     const params = {};
     if (category) params.category = category;
+    if (source) params.source = source;
     if (q) params.q = q;
     if (limit) params.limit = limit;
     

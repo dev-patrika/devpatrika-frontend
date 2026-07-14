@@ -113,15 +113,23 @@ const Feed = () => {
   // Fetch news list from backend
   const { data: news = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['news', category, debouncedQuery],
-    queryFn: () => newsService.getNews({
-      category: category || undefined,
-      q: debouncedQuery || undefined,
-      limit: 60
-    })
+    queryFn: () => {
+      const queryParams = {
+        q: debouncedQuery || undefined,
+        limit: 60
+      };
+      if (category === 'arXiv') {
+        queryParams.source = 'arXiv';
+      } else {
+        queryParams.category = category || undefined;
+      }
+      return newsService.getNews(queryParams);
+    }
   });
 
   const categories = [
     { value: '', label: 'All Feeds' },
+    { value: 'arXiv', label: 'Research Papers' },
     { value: 'AI', label: 'AI & ML' },
     { value: 'Web Dev', label: 'Web Dev' },
     { value: 'Cybersecurity', label: 'Security' },
@@ -413,12 +421,7 @@ const Feed = () => {
                   onClick={() => handleOpenDetails(item)}
                   className="flex items-center justify-between gap-4 p-4 hover:bg-muted/15 cursor-pointer transition-colors group"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    {/* Category badge */}
-                    <span className="bg-primary/10 border border-primary/20 text-primary px-2.5 py-0.5 rounded-full text-[9px] font-bold font-sans uppercase shrink-0">
-                      {item.category || 'AI'}
-                    </span>
-                    
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     {/* Title and highlight snippet */}
                     <div className="min-w-0 flex-1">
                       <h2 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
