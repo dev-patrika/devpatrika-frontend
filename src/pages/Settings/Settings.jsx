@@ -23,11 +23,7 @@ const Settings = () => {
   const { showConfirm } = useUIStore();
   const { clearHistory, sessions } = useChatStore();
 
-  // Load backend models
-  const { data: models = [], isLoading: modelsLoading } = useQuery({
-    queryKey: ['ai', 'models'],
-    queryFn: chatService.getChatModels
-  });
+
 
   // Load health check
   const { data: healthData, isLoading: healthLoading } = useQuery({
@@ -149,52 +145,6 @@ const Settings = () => {
         </Card>
       </div>
 
-      {/* AI Models Section */}
-      <Card className="bg-card border-border shadow-sm p-5 rounded-2xl space-y-4">
-        <div className="space-y-1">
-          <h3 className="text-xs font-bold font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-            <Cpu className="h-4 w-4 text-primary" />
-            AI Models
-          </h3>
-          <p className="text-[11px] text-muted-foreground font-sans">Models powering Dev Patrika's AI features</p>
-        </div>
-        <div className="border-t border-border/40 pt-3.5 mt-2">
-          {modelsLoading ? (
-            <div className="space-y-2.5">
-              <Skeleton className="h-10 w-full rounded-xl" />
-              <Skeleton className="h-10 w-full rounded-xl" />
-              <Skeleton className="h-10 w-full rounded-xl" />
-            </div>
-          ) : models.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic font-sans py-4 text-center">
-              No AI models available right now. Please check back later.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {models.map((m) => (
-                <div 
-                  key={m.model} 
-                  className="flex items-center justify-between text-xs p-3 bg-muted/30 rounded-xl border border-border/60 hover:border-border transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-semibold text-foreground font-sans text-[11px]">{m.model}</span>
-                    <span className="text-[9px] text-muted-foreground font-sans capitalize">{m.provider}</span>
-                  </div>
-                  {m.status === 'active' ? (
-                    <span className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-[8px] font-bold font-mono px-2 py-0.5 rounded-full uppercase select-none">
-                      ● Active
-                    </span>
-                  ) : (
-                    <span className="bg-muted border border-border text-muted-foreground text-[8px] font-bold font-mono px-2 py-0.5 rounded-full uppercase select-none">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   );
 };
