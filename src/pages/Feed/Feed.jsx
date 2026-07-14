@@ -11,7 +11,9 @@ import {
   Bookmark,
   Share2,
   BookOpenCheck,
-  Newspaper
+  Newspaper,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { newsService } from '@/services/newsService';
@@ -22,10 +24,10 @@ import Skeleton from '@/components/ui/Skeleton';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
 const parseNewsSummary = (summary) => {
-  if (!summary) return { overview: 'No summary details compiled.', skills: '' };
+  if (!summary) return { overview: 'No summary details compiled.', skills: '', keyTakeaway: '', community: '' };
   
   let overview = '';
-  const overviewMatch = summary.match(/\*\*Overview\*\*([\s\S]*?)(?=\*\*Skills to Learn\*\*|\[Read Full Article\]|$)/i);
+  const overviewMatch = summary.match(/\*\*Overview\*\*([\s\S]*?)(?=\*\*Skills to Learn\*\*|\*\*Key Takeaways\*\*|\[Read Full Article\]|$)/i);
   if (overviewMatch) {
     overview = overviewMatch[1].trim();
   } else {
@@ -37,6 +39,21 @@ const parseNewsSummary = (summary) => {
   if (skillsMatch) {
     skills = skillsMatch[1].trim();
   }
+
+  let keyTakeaway = '';
+  const takeawaysMatch = summary.match(/\*\*Key Takeaways\*\*([\s\S]*?)(?=\*\*Community & Traction\*\*|\*\*Skills to Learn\*\*|\[Read Full Article\]|$)/i);
+  if (takeawaysMatch) {
+    const bullets = takeawaysMatch[1].split('\n').map(l => l.trim()).filter(l => l.startsWith('-') || l.startsWith('*'));
+    if (bullets.length > 0) {
+      keyTakeaway = bullets[0].replace(/^[*-]\s*/, '').trim();
+    }
+  }
+
+  let community = '';
+  const communityMatch = summary.match(/\*\*Community & Traction\*\*([\s\S]*?)(?=\[Read Full Article\]|$)/i);
+  if (communityMatch) {
+    community = communityMatch[1].trim();
+  }
   
   const cleanText = (txt) => {
     return txt
@@ -47,7 +64,9 @@ const parseNewsSummary = (summary) => {
 
   return {
     overview: cleanText(overview) || 'No summary details compiled.',
-    skills: cleanText(skills)
+    skills: cleanText(skills),
+    keyTakeaway: cleanText(keyTakeaway),
+    community: cleanText(community)
   };
 };
 
@@ -65,6 +84,14 @@ const Feed = () => {
 
   // Filter mode: 'all' or 'bookmarks'
   const [filterMode, setFilterMode] = useState('all');
+
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('feed_view_mode') || 'tiles';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('feed_view_mode', viewMode);
+  }, [viewMode]);
 
   // Debounce search input
   useEffect(() => {
@@ -86,15 +113,23 @@ const Feed = () => {
   // Fetch news list from backend
   const { data: news = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['news', category, debouncedQuery],
-    queryFn: () => newsService.getNews({
-      category: category || undefined,
-      q: debouncedQuery || undefined,
-      limit: 60
-    })
+    queryFn: () => {
+      const queryParams = {
+        q: debouncedQuery || undefined,
+        limit: 60
+      };
+      if (category === 'arXiv') {
+        queryParams.source = 'arXiv';
+      } else {
+        queryParams.category = category || undefined;
+      }
+      return newsService.getNews(queryParams);
+    }
   });
 
   const categories = [
     { value: '', label: 'All Feeds' },
+    { value: 'arXiv', label: 'Research Papers' },
     { value: 'AI', label: 'AI & ML' },
     { value: 'Web Dev', label: 'Web Dev' },
     { value: 'Cybersecurity', label: 'Security' },
@@ -215,15 +250,38 @@ const Feed = () => {
           </button>
         </div>
 
-        {/* Search input field */}
-        <div className="w-full xl:w-80">
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search news titles..."
-            leftIcon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
-            className="bg-card border-border focus-visible:ring-primary text-xs h-8.5 rounded-xl"
-          />
+        {/* Search & Layout Toggle */}
+        <div className="flex items-center gap-2.5 w-full xl:w-auto">
+          <div className="w-full xl:w-80">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search news titles..."
+              leftIcon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
+              className="bg-card border-border focus-visible:ring-primary text-xs h-8.5 rounded-xl"
+            />
+          </div>
+
+          <div className="flex items-center gap-0.5 bg-card border border-border p-0.5 rounded-xl shrink-0">
+            <button
+              onClick={() => setViewMode('tiles')}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'tiles' ? 'bg-primary text-white shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'list' ? 'bg-primary text-white shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="List View"
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -256,78 +314,164 @@ const Feed = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {displayedNews.map((item) => {
-            const isBookmarked = bookmarks.some(b => b.id === item.id);
-            const { overview, skills } = parseNewsSummary(item.summary);
-            return (
-              <Card
-                key={item.id}
-                onClick={() => handleOpenDetails(item)}
-                className="bg-card hover:bg-muted/10 border-border hover:border-primary/20 cursor-pointer transition-all flex flex-col justify-between group overflow-hidden shadow-sm hover:shadow-md p-5 rounded-2xl h-60"
-              >
-                <div className="space-y-2.5">
-                  {/* Category and Reading Time */}
-                  <div className="flex items-center justify-between gap-2 shrink-0">
-                    <span className="bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full text-[9px] font-bold font-sans uppercase">
-                      {item.category || 'AI'}
+        viewMode === 'tiles' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {displayedNews.map((item) => {
+              const isBookmarked = bookmarks.some(b => b.id === item.id);
+              const { overview, skills, keyTakeaway, community } = parseNewsSummary(item.summary);
+              return (
+                <Card
+                  key={item.id}
+                  onClick={() => handleOpenDetails(item)}
+                  className="bg-card hover:bg-muted/10 border-border hover:border-primary/20 cursor-pointer transition-all flex flex-col justify-between group overflow-hidden shadow-sm hover:shadow-md p-5 rounded-2xl h-60"
+                >
+                  <div className="space-y-2.5">
+                    {/* Category and Reading Time */}
+                    <div className="flex items-center justify-between gap-2 shrink-0">
+                      <span className="bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full text-[9px] font-bold font-sans uppercase">
+                        {item.category || 'AI'}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground font-mono flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" /> {getReadingTime(item.summary)}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h2 className="text-sm font-bold font-serif text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                      {item.title}
+                    </h2>
+                    
+                    {/* Summary Overview */}
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-sans">
+                      {overview}
+                    </p>
+
+                    {/* Highlights Box (Skills / Key Takeaway / Community) */}
+                    {skills ? (
+                      <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
+                        <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Skills to Learn</span>
+                        <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                          {skills}
+                        </p>
+                      </div>
+                    ) : keyTakeaway ? (
+                      <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
+                        <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Key Takeaway</span>
+                        <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                          {keyTakeaway}
+                        </p>
+                      </div>
+                    ) : community ? (
+                      <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
+                        <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Community & Traction</span>
+                        <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                          {community}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0 opacity-50">
+                        <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Reference Brief</span>
+                        <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                          No additional takeaways compiled.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Footer details & actions */}
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono border-t border-border/40 pt-2.5 mt-1.5 shrink-0">
+                    <span className="flex items-center gap-1">
+                      <Globe className="h-3 w-3 text-primary" /> {item.source}
                     </span>
-                    <span className="text-[9px] text-muted-foreground font-mono flex items-center gap-0.5">
+                    
+                    {/* Share & Bookmark actions */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => handleShareStory(e, item)}
+                        className="p-1 hover:text-primary text-muted-foreground rounded transition-colors"
+                        title="Copy Share Link"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => handleToggleBookmark(e, item)}
+                        className={`p-1 rounded transition-colors ${
+                          isBookmarked ? 'text-primary hover:text-primary/80' : 'text-muted-foreground hover:text-primary'
+                        }`}
+                        title={isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
+                      >
+                        <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-primary' : ''}`} />
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col border border-border bg-card rounded-2xl overflow-hidden shadow-sm divide-y divide-border/60">
+            {displayedNews.map((item) => {
+              const isBookmarked = bookmarks.some(b => b.id === item.id);
+              const { keyTakeaway, skills, community } = parseNewsSummary(item.summary);
+              const highlightText = skills || keyTakeaway || community || '';
+              
+              return (
+                <div 
+                  key={item.id}
+                  onClick={() => handleOpenDetails(item)}
+                  className="flex items-center justify-between gap-4 p-4 hover:bg-muted/15 cursor-pointer transition-colors group"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {/* Title and highlight snippet */}
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-snug truncate">
+                        {item.title}
+                      </h2>
+                      {highlightText && (
+                        <p className="text-[10px] text-muted-foreground truncate font-sans mt-0.5">
+                          {highlightText}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Meta details & Action buttons */}
+                  <div className="flex items-center gap-4 shrink-0 text-[10px] font-mono text-muted-foreground">
+                    {/* Source */}
+                    <span className="flex items-center gap-1 hidden sm:flex">
+                      <Globe className="h-3 w-3 text-primary" /> {item.source}
+                    </span>
+
+                    {/* Reading Time */}
+                    <span className="flex items-center gap-0.5">
                       <Clock className="h-3 w-3" /> {getReadingTime(item.summary)}
                     </span>
-                  </div>
 
-                  {/* Title */}
-                  <h2 className="text-sm font-bold font-serif text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
-                    {item.title}
-                  </h2>
-                  
-                  {/* Summary Overview */}
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-sans">
-                    {overview}
-                  </p>
-
-                  {/* Skills to Learn Box */}
-                  {skills && (
-                    <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
-                      <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Skills to Learn</span>
-                      <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
-                        {skills}
-                      </p>
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => handleShareStory(e, item)}
+                        className="p-1 hover:text-primary text-muted-foreground rounded transition-colors"
+                        title="Copy Share Link"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => handleToggleBookmark(e, item)}
+                        className={`p-1 rounded transition-colors ${
+                          isBookmarked ? 'text-primary hover:text-primary/80' : 'text-muted-foreground hover:text-primary'
+                        }`}
+                        title={isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
+                      >
+                        <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-primary' : ''}`} />
+                      </button>
                     </div>
-                  )}
-                </div>
-                
-                {/* Footer details & actions */}
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono border-t border-border/40 pt-2.5 mt-1.5 shrink-0">
-                  <span className="flex items-center gap-1">
-                    <Globe className="h-3 w-3 text-primary" /> {item.source}
-                  </span>
-                  
-                  {/* Share & Bookmark actions */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => handleShareStory(e, item)}
-                      className="p-1 hover:text-primary text-muted-foreground rounded transition-colors"
-                      title="Copy Share Link"
-                    >
-                      <Share2 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => handleToggleBookmark(e, item)}
-                      className={`p-1 rounded transition-colors ${
-                        isBookmarked ? 'text-primary hover:text-primary/80' : 'text-muted-foreground hover:text-primary'
-                      }`}
-                      title={isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
-                    >
-                      <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-primary' : ''}`} />
-                    </button>
                   </div>
                 </div>
-              </Card>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );

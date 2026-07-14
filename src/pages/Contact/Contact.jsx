@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { Mail, Send, Copy, Check, Terminal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button';
+import api from '@/services/api';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
     subject: '',
     message: '',
   });
@@ -25,29 +24,26 @@ const Contact = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+    if (!formData.subject || !formData.message) {
       toast.error('Please fill in all fields.');
       return;
     }
     
     setIsSubmitting(true);
-    
-    const to = 'i.e.ishantiwari@gmail.com';
-    const emailSubject = encodeURIComponent(`[Dev Patrika Dispatch] ${formData.subject}`);
-    const emailBody = encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    );
-    
-    const mailtoUrl = `mailto:${to}?subject=${emailSubject}&body=${emailBody}`;
-    
-    // Redirect to mail client
-    window.location.href = mailtoUrl;
-    
-    setIsSubmitting(false);
-    toast.success('Redirecting to your mail client...');
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    try {
+      await api.post('/feedback', {
+        subject: formData.subject,
+        message: formData.message,
+      });
+      toast.success('Your dispatch has been successfully transmitted directly to our editors!');
+      setFormData({ subject: '', message: '' });
+    } catch (err) {
+      // Centrally handled by api.js
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -71,43 +67,11 @@ const Contact = () => {
           <div className="space-y-1.5">
             <h3 className="font-serif text-lg font-bold text-foreground">Leave Us a Message</h3>
             <p className="text-xs text-muted-foreground">
-              Have feedback, features requests, bug reports, or curation ideas? Drop our editors a line.
+              Have feedback, features requests, bug reports, or curation ideas? Drop our editors a line directly from this secure form.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="e.g. John Doe"
-                  className="w-full px-4 py-2.5 bg-muted/30 border border-border focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all text-xs text-foreground placeholder:text-muted-foreground/50"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="john@example.com"
-                  className="w-full px-4 py-2.5 bg-muted/30 border border-border focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all text-xs text-foreground placeholder:text-muted-foreground/50"
-                  required
-                />
-              </div>
-            </div>
-
             <div className="space-y-1.5">
               <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
                 Subject
@@ -132,7 +96,7 @@ const Contact = () => {
                 value={formData.message}
                 onChange={handleChange}
                 placeholder="Write your thoughts here..."
-                rows="5"
+                rows="6"
                 className="w-full px-4 py-2.5 bg-muted/30 border border-border focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 required
               ></textarea>
