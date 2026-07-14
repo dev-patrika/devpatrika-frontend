@@ -22,10 +22,10 @@ import Skeleton from '@/components/ui/Skeleton';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
 const parseNewsSummary = (summary) => {
-  if (!summary) return { overview: 'No summary details compiled.', skills: '' };
+  if (!summary) return { overview: 'No summary details compiled.', skills: '', keyTakeaway: '', community: '' };
   
   let overview = '';
-  const overviewMatch = summary.match(/\*\*Overview\*\*([\s\S]*?)(?=\*\*Skills to Learn\*\*|\[Read Full Article\]|$)/i);
+  const overviewMatch = summary.match(/\*\*Overview\*\*([\s\S]*?)(?=\*\*Skills to Learn\*\*|\*\*Key Takeaways\*\*|\[Read Full Article\]|$)/i);
   if (overviewMatch) {
     overview = overviewMatch[1].trim();
   } else {
@@ -37,6 +37,21 @@ const parseNewsSummary = (summary) => {
   if (skillsMatch) {
     skills = skillsMatch[1].trim();
   }
+
+  let keyTakeaway = '';
+  const takeawaysMatch = summary.match(/\*\*Key Takeaways\*\*([\s\S]*?)(?=\*\*Community & Traction\*\*|\*\*Skills to Learn\*\*|\[Read Full Article\]|$)/i);
+  if (takeawaysMatch) {
+    const bullets = takeawaysMatch[1].split('\n').map(l => l.trim()).filter(l => l.startsWith('-') || l.startsWith('*'));
+    if (bullets.length > 0) {
+      keyTakeaway = bullets[0].replace(/^[*-]\s*/, '').trim();
+    }
+  }
+
+  let community = '';
+  const communityMatch = summary.match(/\*\*Community & Traction\*\*([\s\S]*?)(?=\[Read Full Article\]|$)/i);
+  if (communityMatch) {
+    community = communityMatch[1].trim();
+  }
   
   const cleanText = (txt) => {
     return txt
@@ -47,7 +62,9 @@ const parseNewsSummary = (summary) => {
 
   return {
     overview: cleanText(overview) || 'No summary details compiled.',
-    skills: cleanText(skills)
+    skills: cleanText(skills),
+    keyTakeaway: cleanText(keyTakeaway),
+    community: cleanText(community)
   };
 };
 
@@ -287,12 +304,33 @@ const Feed = () => {
                     {overview}
                   </p>
 
-                  {/* Skills to Learn Box */}
-                  {skills && (
+                  {/* Highlights Box (Skills / Key Takeaway / Community) */}
+                  {skills ? (
                     <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
                       <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Skills to Learn</span>
                       <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
                         {skills}
+                      </p>
+                    </div>
+                  ) : keyTakeaway ? (
+                    <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
+                      <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Key Takeaway</span>
+                      <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                        {keyTakeaway}
+                      </p>
+                    </div>
+                  ) : community ? (
+                    <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0">
+                      <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Community & Traction</span>
+                      <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                        {community}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-muted/40 rounded-xl border border-border text-[10px] leading-relaxed text-foreground animate-fade-in shrink-0 opacity-50">
+                      <span className="font-serif italic font-bold text-[9.5px] block text-primary mb-0.5">Reference Brief</span>
+                      <p className="line-clamp-1 text-zinc-650 font-sans leading-snug">
+                        No additional takeaways compiled.
                       </p>
                     </div>
                   )}
