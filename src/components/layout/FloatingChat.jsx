@@ -59,6 +59,16 @@ const FloatingChat = () => {
     queryFn: chatService.getChatModels
   });
 
+  // Auto-sync selectedModel if not in available models list
+  useEffect(() => {
+    if (models.length > 0) {
+      const exists = models.some(m => m.model === selectedModel);
+      if (!exists) {
+        setSelectedModel(models[0].model);
+      }
+    }
+  }, [models, selectedModel, setSelectedModel]);
+
   // Auto-create session if none exists
   useEffect(() => {
     if (isOpen && !activeSessionId) {
