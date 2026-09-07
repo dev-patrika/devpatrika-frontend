@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export const useChatStore = create((set, get) => ({
   sessions: JSON.parse(localStorage.getItem('chat_sessions') || '[]'), // List of session objects: { id, title, createdAt }
   activeSessionId: localStorage.getItem('active_session_id') || '',
-  selectedModel: localStorage.getItem('selected_model') || 'openai/gpt-oss-120b',
+  selectedModel: localStorage.getItem('selected_model') || 'gemini-2.5-flash',
   chatHistories: JSON.parse(localStorage.getItem('chat_histories') || '{}'), // Maps sessionId to array of message objects
 
   setSelectedModel: (model) => {
